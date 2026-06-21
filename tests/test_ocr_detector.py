@@ -44,3 +44,11 @@ def test_unknown_keyword_state_name_ignored():
     det = OcrStateDetector(_Engine(["full time"]),
                            {"NOT_A_STATE": ["x"], "FULLTIME": ["full time"]})
     assert det.detect(_frame()) == GameState.FULLTIME
+
+
+def test_hits_below_confidence_is_unknown():
+    # KICKOFF has 2 keywords; only one matches -> score 0.5, below 0.6 cutoff.
+    det = OcrStateDetector(_Engine(["kick off"]), KEYWORDS, min_confidence=0.6)
+    state, score = det.best_score(_frame())
+    assert state == GameState.UNKNOWN
+    assert score == 0.5

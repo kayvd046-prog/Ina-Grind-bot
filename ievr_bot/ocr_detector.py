@@ -20,7 +20,7 @@ class OcrStateDetector:
             self.keywords[state] = [w.lower() for w in words]
 
     def _crop(self, frame: np.ndarray) -> np.ndarray:
-        if not self.region:
+        if self.region is None:
             return frame
         r = self.region
         return frame[r["top"]:r["top"] + r["height"],
@@ -29,13 +29,14 @@ class OcrStateDetector:
     def best_score(self, frame: np.ndarray) -> tuple[GameState, float]:
         text = " ".join(self.engine.read(self._crop(frame))).lower()
         best_state, best_hits, best_total = GameState.UNKNOWN, 0, 1
+        # On a tie in hit count, the first state in keyword insertion order wins (strict >).
         for state, words in self.keywords.items():
             hits = sum(1 for w in words if w in text)
             if hits > best_hits:
                 best_state, best_hits, best_total = state, hits, len(words)
         if best_hits == 0:
             return (GameState.UNKNOWN, 0.0)
-        score = best_hits / max(best_total, 1)
+        score = best_hits / best_total
         if score < self.min_confidence:
             return (GameState.UNKNOWN, score)
         return (best_state, score)
