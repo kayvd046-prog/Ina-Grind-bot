@@ -1,0 +1,15 @@
+name: ranked
+mode: ranked
+templates_subdir: ranked
+match_threshold: 0.85
+phase2_enabled: false
+button_map:
+  confirm: A
+  cancel: B
+  commander_toggle: Y
+  menu: START
+timings:
+  poll_interval: 0.4
+  tap_cooldown: 0.6
+  stuck_seconds: 40
+  recovery_backoff: 3.0

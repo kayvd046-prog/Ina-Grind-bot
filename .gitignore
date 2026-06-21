@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+logs/*.log
+.venv/
+.pytest_cache/
+templates/**/*.png
+!templates/**/.gitkeep

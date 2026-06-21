@@ -1,0 +1,8 @@
+mss>=9.0
+opencv-python>=4.9
+numpy>=1.26
+vgamepad>=0.1.0
+pydirectinput>=1.0.4
+PyYAML>=6.0
+PySide6>=6.6
+pytest>=8.0
