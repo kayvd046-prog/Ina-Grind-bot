@@ -31,3 +31,28 @@ def test_missing_button_raises(tmp_path):
     )
     with pytest.raises(ValueError):
         load_profile("bad", tmp_path)
+
+
+def test_profile_has_detection_and_ocr_defaults(tmp_path):
+    (tmp_path / "min.yaml").write_text(
+        "name: min\nmode: pve\ntemplates_subdir: pve\n"
+        "button_map: {confirm: A, cancel: B, commander_toggle: Y, menu: START}\n"
+        "timings: {}\n"
+    )
+    p = load_profile("min", tmp_path)
+    assert p.detection == "composite"   # default when absent
+    assert p.ocr == {}                  # default when absent
+
+
+def test_profile_reads_detection_and_ocr(tmp_path):
+    (tmp_path / "ocr.yaml").write_text(
+        "name: ocr\nmode: pve\ntemplates_subdir: pve\n"
+        "detection: ocr\n"
+        "ocr: {lang: en, min_confidence: 0.5, keywords: {GOAL: ['goal']}}\n"
+        "button_map: {confirm: A, cancel: B, commander_toggle: Y, menu: START}\n"
+        "timings: {}\n"
+    )
+    p = load_profile("ocr", tmp_path)
+    assert p.detection == "ocr"
+    assert p.ocr["min_confidence"] == 0.5
+    assert p.ocr["keywords"]["GOAL"] == ["goal"]

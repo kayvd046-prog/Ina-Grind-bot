@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import yaml
 
@@ -18,6 +18,8 @@ class Profile:
     phase2_enabled: bool = False
     capture_backend: str = "screen"  # "screen" or "window"
     window_title: str = ""
+    detection: str = "composite"  # "ocr" | "template" | "composite"
+    ocr: dict = field(default_factory=dict)
 
 
 def load_profile(name: str, profiles_dir: Path | None = None) -> Profile:
@@ -41,4 +43,6 @@ def load_profile(name: str, profiles_dir: Path | None = None) -> Profile:
         phase2_enabled=bool(data.get("phase2_enabled", False)),
         capture_backend=str(data.get("capture_backend", "screen")),
         window_title=str(data.get("window_title", "")),
+        detection=str(data.get("detection", "composite")),
+        ocr=data.get("ocr", {}) or {},
     )

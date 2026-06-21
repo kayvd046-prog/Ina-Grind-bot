@@ -17,3 +17,18 @@ timings:
   tap_cooldown: 0.6
   stuck_seconds: 40
   recovery_backoff: 3.0
+detection: composite        # ocr | template | composite
+ocr:
+  lang: en
+  min_confidence: 0.5
+  region: null              # null = whole frame
+  keywords:
+    MAIN_MENU:   ["press start", "continue", "play"]
+    KICKOFF:     ["kick off", "commander"]
+    HALFTIME:    ["half time"]
+    GOAL:        ["goal"]
+    FULLTIME:    ["full time"]
+    REWARDS:     ["reward", "rewards"]
+    POST_MATCH:  ["match result", "results", "next"]
+    LOADING:     ["loading", "now loading"]
+    ERROR_DIALOG: ["error", "disconnected", "communication"]
