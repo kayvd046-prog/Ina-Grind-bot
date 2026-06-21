@@ -81,7 +81,7 @@ def build_orchestrator(profile: Profile, controller_kind: str = "vgamepad",
                        dry_run: bool = False, source=None,
                        on_update=None) -> "Orchestrator":
     from .capture import ScreenCapture, WindowCapture
-    from .vision import StateDetector
+    from .composite_detector import build_detector
     from .controller import make_controller
     from .statemachine import StateMachine
     from .watchdog import Watchdog
@@ -92,7 +92,7 @@ def build_orchestrator(profile: Profile, controller_kind: str = "vgamepad",
         src = WindowCapture(profile.window_title)
     else:
         src = ScreenCapture()
-    detector = StateDetector(profile.templates_dir, profile.match_threshold)
+    detector = build_detector(profile)
     kind = "null" if dry_run else controller_kind
     controller = make_controller(kind, profile.button_map)
     machine = StateMachine(profile, controller)
