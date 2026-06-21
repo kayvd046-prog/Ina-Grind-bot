@@ -78,7 +78,9 @@ Two caveats for true background play:
 - The bot detects game screens via **OCR by default** (`detection: composite`
   in each profile). On-screen text is read by RapidOCR and matched against the
   keyword lists in `profiles/*.yaml` → `ocr.keywords`. If a state is missed or
-  misidentified, add or adjust keywords there.
+  misidentified, add or adjust keywords there. Note: single-word keywords (e.g.
+  "goal") are high-recall but low-precision; matching is whole-word, and
+  narrowing `ocr.region` to the banner area improves reliability.
 - Reference image templates are an **optional fallback**: the composite
   detector only consults them when OCR confidence is below the threshold. You
   can still capture templates with `capture_templates.exe` for extra robustness,

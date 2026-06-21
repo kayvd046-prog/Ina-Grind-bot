@@ -52,3 +52,9 @@ def test_hits_below_confidence_is_unknown():
     state, score = det.best_score(_frame())
     assert state == GameState.UNKNOWN
     assert score == 0.5
+
+
+def test_word_boundary_avoids_substring_false_positive():
+    # "goalkeeper" must NOT match the GOAL keyword "goal".
+    det = OcrStateDetector(_Engine(["the goalkeeper saved it"]), KEYWORDS)
+    assert det.detect(_frame()) == GameState.UNKNOWN

@@ -32,6 +32,10 @@ def load_profile(name: str, profiles_dir: Path | None = None) -> Profile:
     missing = [b for b in REQUIRED_BUTTONS if b not in button_map]
     if missing:
         raise ValueError(f"Profile '{name}' missing buttons: {missing}")
+    detection = str(data.get("detection", "composite"))
+    _VALID_DETECTIONS = {"ocr", "template", "composite"}
+    if detection not in _VALID_DETECTIONS:
+        raise ValueError(f"Profile '{name}' has invalid detection: {detection!r}")
     templates_root = base.parent / "templates"
     return Profile(
         name=data["name"],
@@ -43,6 +47,6 @@ def load_profile(name: str, profiles_dir: Path | None = None) -> Profile:
         phase2_enabled=bool(data.get("phase2_enabled", False)),
         capture_backend=str(data.get("capture_backend", "screen")),
         window_title=str(data.get("window_title", "")),
-        detection=str(data.get("detection", "composite")),
+        detection=detection,
         ocr=data.get("ocr", {}) or {},
     )

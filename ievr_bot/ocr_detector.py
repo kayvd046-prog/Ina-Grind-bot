@@ -1,4 +1,5 @@
 """Detect game state from on-screen text via OCR keyword matching."""
+import re
 import numpy as np
 from .states import GameState
 from .ocr import OcrEngine
@@ -31,7 +32,7 @@ class OcrStateDetector:
         best_state, best_hits, best_total = GameState.UNKNOWN, 0, 1
         # On a tie in hit count, the first state in keyword insertion order wins (strict >).
         for state, words in self.keywords.items():
-            hits = sum(1 for w in words if w in text)
+            hits = sum(1 for w in words if re.search(r"\b" + re.escape(w) + r"\b", text))
             if hits > best_hits:
                 best_state, best_hits, best_total = state, hits, len(words)
         if best_hits == 0:

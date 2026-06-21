@@ -44,6 +44,18 @@ def test_profile_has_detection_and_ocr_defaults(tmp_path):
     assert p.ocr == {}                  # default when absent
 
 
+def test_invalid_detection_raises(tmp_path):
+    (tmp_path / "bad.yaml").write_text(
+        "name: bad\nmode: pve\ntemplates_subdir: pve\n"
+        "detection: composit\n"
+        "button_map: {confirm: A, cancel: B, commander_toggle: Y, menu: START}\n"
+        "timings: {}\n"
+    )
+    import pytest
+    with pytest.raises(ValueError):
+        load_profile("bad", tmp_path)
+
+
 def test_profile_reads_detection_and_ocr(tmp_path):
     (tmp_path / "ocr.yaml").write_text(
         "name: ocr\nmode: pve\ntemplates_subdir: pve\n"

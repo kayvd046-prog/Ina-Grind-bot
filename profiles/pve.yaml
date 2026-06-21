@@ -22,6 +22,7 @@ ocr:
   lang: en
   min_confidence: 0.5
   region: null              # null = whole frame
+  # Whole-word match. Prefer distinctive multi-word phrases; tune against real frames.
   keywords:
     MAIN_MENU:   ["press start", "continue", "play"]
     KICKOFF:     ["kick off", "commander"]

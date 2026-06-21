@@ -36,3 +36,18 @@ def test_both_unknown_is_unknown():
     comp = CompositeDetector(_Det(GameState.UNKNOWN, 0.0),
                              _Det(GameState.UNKNOWN, 0.0))
     assert comp.detect(_f()) == GameState.UNKNOWN
+
+
+def test_build_detector_falls_back_when_ocr_init_fails(tmp_path, monkeypatch):
+    from ievr_bot import composite_detector as cd
+    from ievr_bot.vision import StateDetector
+    from ievr_bot.config import load_profile
+    from pathlib import Path
+    import ievr_bot.ocr as ocr_mod
+    def _boom(lang="en"):
+        raise RuntimeError("no model")
+    monkeypatch.setattr(ocr_mod, "make_ocr_engine", _boom)
+    PROFILES = Path(__file__).resolve().parents[1] / "profiles"
+    profile = load_profile("pve", PROFILES)  # detection: composite
+    det = cd.build_detector(profile)
+    assert isinstance(det, StateDetector)
