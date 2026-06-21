@@ -12,6 +12,8 @@ def test_load_pve_profile():
     assert p.mode == "pve"
     assert p.match_threshold == 0.85
     assert p.timings["poll_interval"] == 0.4
+    assert p.capture_backend == "window"
+    assert p.window_title  # non-empty
     for b in REQUIRED_BUTTONS:
         assert b in p.button_map
 

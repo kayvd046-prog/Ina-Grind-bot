@@ -3,6 +3,10 @@ mode: ranked
 templates_subdir: ranked
 match_threshold: 0.85
 phase2_enabled: false
+# Capture from the game window (works while alt-tabbed / in background).
+# Set to "screen" to capture the visible foreground screen instead.
+capture_backend: window
+window_title: INAZUMA ELEVEN
 button_map:
   confirm: A
   cancel: B

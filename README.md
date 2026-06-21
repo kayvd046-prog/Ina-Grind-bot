@@ -52,6 +52,26 @@ Start the game and leave it at the main menu, then press **Start** in the GUI.
 
 `.venv\Scripts\python -m pytest -v`
 
+## Background / alt-tab operation
+
+The profiles default to `capture_backend: window`, which grabs the game window
+directly via the Win32 `PrintWindow` API. This means the bot keeps **seeing** the
+game even when it is behind other windows or you have alt-tabbed away (the window
+must not be *minimized*). Set `window_title` in `profiles/*.yaml` to a substring
+of the game's window title (default: `INAZUMA ELEVEN`). Use
+`capture_backend: screen` to capture the visible foreground instead.
+
+Two caveats for true background play:
+- **Input:** keyboard input only reaches the focused window, so use the
+  **vgamepad** controller (default) — XInput is not focus-bound and many games
+  keep reading it in the background.
+- **The game must keep running while unfocused.** Some games pause on focus
+  loss. Check the game's settings for a "pause when unfocused / run in
+  background" option and disable pausing. If the game still pauses, background
+  input cannot help — that is a game limitation, not a bot bug.
+- Some GPU-accelerated games return black frames with `PrintWindow`; if the
+  preview is black while the game is visible, switch to `capture_backend: screen`.
+
 ## Notes
 
 - Start with **PvE**. Automating online Ranked may violate the game's ToS.

@@ -16,6 +16,8 @@ class Profile:
     timings: dict
     match_threshold: float = 0.85
     phase2_enabled: bool = False
+    capture_backend: str = "screen"  # "screen" or "window"
+    window_title: str = ""
 
 
 def load_profile(name: str, profiles_dir: Path | None = None) -> Profile:
@@ -37,4 +39,6 @@ def load_profile(name: str, profiles_dir: Path | None = None) -> Profile:
         timings=data.get("timings", {}),
         match_threshold=float(data.get("match_threshold", 0.85)),
         phase2_enabled=bool(data.get("phase2_enabled", False)),
+        capture_backend=str(data.get("capture_backend", "screen")),
+        window_title=str(data.get("window_title", "")),
     )
