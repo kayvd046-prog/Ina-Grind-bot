@@ -19,13 +19,22 @@ class BotWorker(QThread):
     def run(self):
         logger = get_logger()
         logger.buffer.callback = self.log_line.emit  # type: ignore[attr-defined]
-        orch = build_orchestrator(
-            self.profile, self.controller_kind, self.dry_run,
-            on_update=self.status.emit,
-        )
-        orch.run(self._stop)
-        self.stopped.emit()
+        try:
+            orch = build_orchestrator(
+                self.profile, self.controller_kind, self.dry_run,
+                on_update=self.status.emit,
+            )
+            orch.run(self._stop)
+        finally:
+            # Drop the callback so a stale bound signal can't fire after the
+            # worker is gone (e.g. when the worker is recreated on restart).
+            logger.buffer.callback = None  # type: ignore[attr-defined]
+            self.stopped.emit()
 
     def stop(self):
         self._stop.set()
-        self.wait(5000)
+        if not self.wait(5000):
+            get_logger().warning(
+                "BotWorker did not stop within 5s; a Win32/input call may be "
+                "blocking. Leaving it to finish in the background."
+            )

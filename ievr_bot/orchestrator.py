@@ -55,11 +55,23 @@ class Orchestrator:
         interval = float(self.profile.timings.get("poll_interval", 0.4))
         self.log.info("Bot started (profile=%s, dry_run=%s)",
                       self.profile.name, self.dry_run)
+        last_err = None  # signature of the previous step error
+        err_streak = 0   # how many times it has repeated in a row
         while not stop_event.is_set():
             try:
                 self.step()
-            except Exception:  # never let the unattended loop die
-                self.log.exception("Error in step; backing off")
+                last_err, err_streak = None, 0
+            except Exception as exc:  # never let the unattended loop die
+                # Rate-limit identical repeated errors (e.g. window minimized for
+                # 30 min) so we don't write a stack trace every poll and fill disk.
+                sig = f"{type(exc).__name__}: {exc}"
+                if sig == last_err:
+                    err_streak += 1
+                    if err_streak % 50 == 0:
+                        self.log.warning("Still failing (x%d): %s", err_streak, sig)
+                else:
+                    self.log.exception("Error in step; backing off")
+                    last_err, err_streak = sig, 1
                 time.sleep(float(self.profile.timings.get("recovery_backoff", 2.0)))
             time.sleep(interval)
         self.log.info("Bot stopped")
