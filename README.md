@@ -75,7 +75,15 @@ Two caveats for true background play:
 ## Notes
 
 - Start with **PvE**. Automating online Ranked may violate the game's ToS.
-- Tune `match_threshold` and `timings` in `profiles/*.yaml` if detection is
-  flaky.
-- Detection is resolution-sensitive: recapture templates if you change the game
-  resolution or window size.
+- The bot detects game screens via **OCR by default** (`detection: composite`
+  in each profile). On-screen text is read by RapidOCR and matched against the
+  keyword lists in `profiles/*.yaml` → `ocr.keywords`. If a state is missed or
+  misidentified, add or adjust keywords there.
+- Reference image templates are an **optional fallback**: the composite
+  detector only consults them when OCR confidence is below the threshold. You
+  can still capture templates with `capture_templates.exe` for extra robustness,
+  but they are not required for basic operation.
+- Tune `timings` in `profiles/*.yaml` if button presses arrive too early or
+  too late.
+- If you switch the game resolution or window size, recapture any template
+  images you rely on (OCR is resolution-independent).
