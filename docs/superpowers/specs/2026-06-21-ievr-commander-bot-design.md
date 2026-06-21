@@ -24,6 +24,7 @@ navigeert en de loop eindeloos herhaalt.
 | Modus | PvE én Online Ranked ondersteunen via config; **start met PvE** |
 | Autonomie | Start vanaf game al open in hoofdmenu; bot loopt eindeloos tot handmatige stop |
 | Input | Virtuele Xbox-controller (`vgamepad` + ViGEmBus), met toetsenbord-fallback |
+| GUI | PySide6 / Qt desktop-bedieningspaneel (dark theme) |
 
 ## Achtergrond: wat Commander Mode is
 
@@ -57,6 +58,27 @@ De speler (= straks de bot) moet alleen nog:
 - **`logger`** — logt naar bestand + console, maakt screenshot bij fouten.
 - **`tools/capture_templates`** — hulpscript om tijdens setup referentiebeelden
   vast te leggen.
+- **`gui`** — PySide6/Qt-bedieningspaneel dat de bot aanstuurt (zie GUI-sectie).
+
+## GUI (PySide6 / Qt)
+
+Een desktop-bedieningspaneel met dark theme dat de bot bestuurt zonder de
+terminal. De bot draait in een aparte worker-thread (`QThread`), zodat de GUI
+responsief blijft; communicatie via Qt-signalen (staat-updates, logregels,
+preview-frames).
+
+Functies:
+- **Start / Stop / Pauze** van de bot.
+- **Profielkeuze** (PvE / Ranked) en **dry-run-schakelaar**.
+- **Live status:** huidige staat, aantal gespeelde potjes, uptime, laatste actie.
+- **Live log** (gekleurd op niveau) + knop "open logmap".
+- **Screenshot-preview** van wat de bot ziet, met de herkende staat erop.
+- **Setup-tab:** knop om `capture_templates` te starten en de knoppen-mapping te
+  configureren.
+
+De GUI is een dunne laag bovenop dezelfde `orchestrator`; de bot blijft ook
+zonder GUI bruikbaar via `main.py` (headless), zodat logica en UI gescheiden
+blijven en los testbaar zijn.
 
 ## Toestandsmachine (kernloop)
 
@@ -117,6 +139,11 @@ IEVR/
     watchdog.py       # zelfherstel
     config.py         # profiel-laden
     logger.py
+  gui/
+    __init__.py
+    app.py            # PySide6 hoofdvenster
+    worker.py         # QThread-wrapper rond de orchestrator
+    widgets.py        # status-, log- en previewpanelen
   templates/
     pve/              # referentie-screenshots PvE
     ranked/           # referentie-screenshots Ranked
@@ -127,7 +154,8 @@ IEVR/
     capture_templates.py
   tests/
   logs/
-  main.py
+  main.py               # headless entrypoint
+  run_gui.py            # GUI-entrypoint
   requirements.txt
   README.md
 ```
