@@ -5,10 +5,10 @@ For each state, position the game on that screen, then press ENTER to save.
 Press 's' then ENTER to skip a state, 'q' then ENTER to quit.
 """
 import argparse
-from pathlib import Path
 import cv2
 from ievr_bot.capture import ScreenCapture
 from ievr_bot.states import GameState
+from ievr_bot.paths import templates_root
 
 CAPTURE_STATES = [
     GameState.MAIN_MENU, GameState.LOADING, GameState.KICKOFF,
@@ -22,7 +22,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--profile", default="pve")
     args = ap.parse_args()
-    out = Path(__file__).resolve().parent.parent / "templates" / args.profile
+    out = templates_root() / args.profile
     out.mkdir(parents=True, exist_ok=True)
     cap = ScreenCapture()
 

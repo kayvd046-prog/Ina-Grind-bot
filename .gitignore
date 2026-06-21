@@ -3,5 +3,7 @@ __pycache__/
 logs/*.log
 .venv/
 .pytest_cache/
+build/
+dist/
 templates/**/*.png
 !templates/**/.gitkeep

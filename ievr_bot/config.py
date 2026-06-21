@@ -2,8 +2,9 @@ from dataclasses import dataclass
 from pathlib import Path
 import yaml
 
+from .paths import profiles_dir as _default_profiles_dir
+
 REQUIRED_BUTTONS = ("confirm", "cancel", "commander_toggle", "menu")
-DEFAULT_PROFILES_DIR = Path(__file__).resolve().parent.parent / "profiles"
 
 
 @dataclass
@@ -18,7 +19,7 @@ class Profile:
 
 
 def load_profile(name: str, profiles_dir: Path | None = None) -> Profile:
-    base = profiles_dir or DEFAULT_PROFILES_DIR
+    base = profiles_dir or _default_profiles_dir()
     path = base / f"{name}.yaml"
     if not path.exists():
         raise FileNotFoundError(f"Profile not found: {path}")

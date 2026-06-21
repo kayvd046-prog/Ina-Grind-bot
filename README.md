@@ -21,7 +21,25 @@ and presses buttons to loop matches forever. See the design spec in
    Then crop each saved PNG in `templates/pve/` down to the distinctive UI
    element for that screen (button, banner, dialog).
 
-## Run
+## Standalone exe (no Python needed)
+
+Build once, then just double-click:
+
+```
+.venv\Scripts\python build_exe.py
+```
+
+This produces in `dist/`:
+- **`IEVR.exe`** — the bot GUI; double-click to run.
+- **`capture_templates.exe`** — run once during setup to capture reference
+  screens.
+- `profiles/` and `templates/` folders next to the exes — edit profiles and
+  capture templates here (the exe reads these from its own folder).
+
+Distribute the whole `dist/` folder together. Still install the **ViGEmBus**
+driver on any machine that will send controller input.
+
+## Run (from source)
 
 GUI: `.venv\Scripts\python run_gui.py`
 Headless: `.venv\Scripts\python main.py --profile pve` (add `--dry-run` to

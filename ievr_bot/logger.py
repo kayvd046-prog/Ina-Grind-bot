@@ -1,8 +1,9 @@
 import logging
-from pathlib import Path
 from typing import Callable, Optional
 
-_LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
+from .paths import logs_dir as _logs_dir
+
+_LOG_DIR = _logs_dir()
 _logger: Optional[logging.Logger] = None
 _FORMAT = "%(asctime)s [%(levelname)s] %(message)s"
 

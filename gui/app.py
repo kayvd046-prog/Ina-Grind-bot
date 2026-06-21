@@ -1,9 +1,9 @@
-from pathlib import Path
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QComboBox, QCheckBox, QLabel,
 )
 from ievr_bot.config import load_profile
+from ievr_bot.paths import profiles_dir
 from gui.worker import BotWorker
 from gui.widgets import StatusPanel, LogPanel, PreviewPanel
 
@@ -54,8 +54,7 @@ class MainWindow(QMainWindow):
         self.stop_btn.clicked.connect(self.stop)
 
     def start(self):
-        profiles = Path(__file__).resolve().parents[1] / "profiles"
-        profile = load_profile(self.profile_box.currentText(), profiles)
+        profile = load_profile(self.profile_box.currentText(), profiles_dir())
         self.worker = BotWorker(
             profile, self.controller_box.currentText(), self.dry_run.isChecked())
         self.worker.status.connect(self._on_status)
