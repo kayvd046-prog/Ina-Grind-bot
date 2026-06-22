@@ -80,18 +80,13 @@ class Orchestrator:
 def build_orchestrator(profile: Profile, controller_kind: str = "vgamepad",
                        dry_run: bool = False, source=None,
                        on_update=None) -> "Orchestrator":
-    from .capture import ScreenCapture, WindowCapture
+    from .capture import build_frame_source
     from .composite_detector import build_detector
     from .controller import make_controller
     from .statemachine import StateMachine
     from .watchdog import Watchdog
 
-    if source is not None:
-        src = source
-    elif profile.capture_backend == "window":
-        src = WindowCapture(profile.window_title)
-    else:
-        src = ScreenCapture()
+    src = source if source is not None else build_frame_source(profile)
     detector = build_detector(profile)
     kind = "null" if dry_run else controller_kind
     controller = make_controller(kind, profile.button_map)

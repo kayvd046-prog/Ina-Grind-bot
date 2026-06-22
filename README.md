@@ -16,10 +16,16 @@ and presses buttons to loop matches forever. See the design spec in
 3. Install the **ViGEmBus** driver (required by `vgamepad`):
    https://github.com/ViGEm/ViGEmBus/releases
 4. Launch the game, set a **fixed resolution / borderless window**.
-5. Capture reference screenshots:
-   `.venv\Scripts\python tools\capture_templates.py --profile pve`
-   Then crop each saved PNG in `templates/pve/` down to the distinctive UI
-   element for that screen (button, banner, dialog).
+5. (Optional — templates are only an OCR fallback.) Capture reference
+   screenshots the easy way: open the GUI, go to the **Templates** tab, press
+   **Record**, play one full match in Commander Mode, then press **Stop**. The
+   bot records itself via the game window (no command prompt over the screen),
+   auto-labels the frames with its own detector, and shows a per-state review
+   grid with a suggested crop you can drag/resize before **Save**. See
+   "Recording templates" below.
+   The old interactive CLI still works as a fallback:
+   `.venv\Scripts\python tools\capture_templates.py --profile pve` (then crop
+   each saved PNG in `templates/pve/` down to the distinctive UI element).
 
 ## Standalone exe (no Python needed)
 
@@ -51,6 +57,27 @@ Start the game and leave it at the main menu, then press **Start** in the GUI.
 ## Tests
 
 `.venv\Scripts\python -m pytest -v`
+
+## Recording templates (Templates tab)
+
+Instead of stopping at each screen and pressing ENTER in a prompt, let the bot
+record a whole match and produce the templates itself:
+
+1. GUI → **Templates** tab → pick the profile → **Record**.
+2. Play one full match in Commander Mode. The bot grabs frames from the game
+   **window** (same source it plays against), so nothing needs to overlap the
+   game and it keeps capturing even while alt-tabbed.
+3. **Stop**. The bot runs its own detector over the recording, groups frames by
+   game state, and keeps the highest-confidence ones.
+4. Review grid: per state you get the best frame with a **suggested crop**
+   (drawn around the text that identifies the state). Use *prev/next* to pick a
+   different frame, drag the box / its bottom-right handle to adjust the crop,
+   or tick **Skip**. States never seen during the match show "no candidate".
+5. **Save templates** writes the cropped PNGs to `templates/<profile>/`.
+
+Frames stay in memory; only the templates you keep are written. States OCR
+can't label won't get an auto-candidate — capture those with the CLI fallback
+if you need them.
 
 ## Background / alt-tab operation
 

@@ -37,6 +37,15 @@ class ScreenCapture:
         return arr[:, :, :3]  # drop alpha -> BGR
 
 
+def build_frame_source(profile) -> "FrameSource":
+    """Build the frame source a profile asks for: WindowCapture for
+    `capture_backend: window`, else ScreenCapture. Shared by the bot
+    orchestrator and the template recorder so both see the same thing."""
+    if profile.capture_backend == "window":
+        return WindowCapture(profile.window_title)
+    return ScreenCapture()
+
+
 # --- Win32 background window capture -------------------------------------
 
 PW_RENDERFULLCONTENT = 0x00000002

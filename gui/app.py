@@ -1,11 +1,12 @@
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QComboBox, QCheckBox, QLabel,
+    QComboBox, QCheckBox, QLabel, QTabWidget,
 )
 from ievr_bot.config import load_profile
 from ievr_bot.paths import profiles_dir
 from gui.worker import BotWorker
 from gui.widgets import StatusPanel, LogPanel, PreviewPanel
+from gui.template_tab import TemplateTab
 
 DARK_QSS = """
 QWidget { background:#1e1f22; color:#e6e6e6; font-size:13px; }
@@ -46,8 +47,15 @@ class MainWindow(QMainWindow):
         body.addLayout(left, 1); body.addWidget(self.log_panel, 1)
 
         root = QVBoxLayout(); root.addLayout(controls); root.addLayout(body)
-        container = QWidget(); container.setLayout(root)
-        self.setCentralWidget(container)
+        run_tab = QWidget(); run_tab.setLayout(root)
+
+        self.template_tab = TemplateTab()
+        self.template_tab.log_line.connect(self.log_panel.append)
+
+        tabs = QTabWidget()
+        tabs.addTab(run_tab, "Run")
+        tabs.addTab(self.template_tab, "Templates")
+        self.setCentralWidget(tabs)
         self.setStyleSheet(DARK_QSS)
 
         self.start_btn.clicked.connect(self.start)
