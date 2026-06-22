@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import yaml
 
-from .paths import profiles_dir as _default_profiles_dir
+from .paths import profiles_dir as _default_profiles_dir, templates_root
 
 REQUIRED_BUTTONS = ("confirm", "cancel", "commander_toggle", "menu")
 
@@ -36,11 +36,13 @@ def load_profile(name: str, profiles_dir: Path | None = None) -> Profile:
     _VALID_DETECTIONS = {"ocr", "template", "composite"}
     if detection not in _VALID_DETECTIONS:
         raise ValueError(f"Profile '{name}' has invalid detection: {detection!r}")
-    templates_root = base.parent / "templates"
+    # Templates are writable user data, independent of where profiles live
+    # (when frozen, profiles are read-only inside the exe but captured
+    # templates must persist under the user data dir).
     return Profile(
         name=data["name"],
         mode=data["mode"],
-        templates_dir=templates_root / data["templates_subdir"],
+        templates_dir=templates_root() / data["templates_subdir"],
         button_map=button_map,
         timings=data.get("timings", {}),
         match_threshold=float(data.get("match_threshold", 0.85)),

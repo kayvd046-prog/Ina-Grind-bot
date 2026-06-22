@@ -26,7 +26,7 @@ def get_logger(name: str = "ievr") -> logging.Logger:
     global _logger
     if _logger is not None:
         return _logger
-    _LOG_DIR.mkdir(exist_ok=True)
+    _LOG_DIR.mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
     fmt = logging.Formatter(_FORMAT)

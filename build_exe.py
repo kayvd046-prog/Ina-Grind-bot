@@ -1,12 +1,12 @@
-"""Build standalone executables and stage editable data next to them.
+"""Build the single self-contained executable.
 
 Run with the project venv:
     .venv\\Scripts\\python build_exe.py
 
-Produces dist/IEVR.exe, dist/capture_templates.exe, and copies the
-profiles/ and templates/ folder structure alongside them.
+Produces dist/IEVR.exe and nothing else: profiles and the OCR models are
+bundled inside the exe; captured templates and logs are written at runtime
+under %LOCALAPPDATA%\\IEVR.
 """
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -21,18 +21,10 @@ def main() -> None:
          str(ROOT / "IEVR.spec")],
         check=True,
     )
-    # Ship editable data next to the exes (profiles editable; templates empty
-    # folders for the user to capture into). Existing .png templates are not
-    # copied — the user captures their own.
-    for name in ("profiles", "templates"):
-        dst = DIST / name
-        if dst.exists():
-            shutil.rmtree(dst)
-        shutil.copytree(ROOT / name, dst,
-                        ignore=shutil.ignore_patterns("*.png"))
     print(f"\nBuild complete. See {DIST}")
-    print("  - IEVR.exe              (double-click to run the bot GUI)")
-    print("  - capture_templates.exe (run once to capture reference screens)")
+    print("  - IEVR.exe  (single file — double-click to run the bot + setup)")
+    print("    Setup lives in the GUI's Templates tab; captured templates and")
+    print("    logs are written under %LOCALAPPDATA%\\IEVR.")
 
 
 if __name__ == "__main__":

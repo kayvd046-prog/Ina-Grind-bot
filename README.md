@@ -35,15 +35,20 @@ Build once, then just double-click:
 .venv\Scripts\python build_exe.py
 ```
 
-This produces in `dist/`:
-- **`IEVR.exe`** — the bot GUI; double-click to run.
-- **`capture_templates.exe`** — run once during setup to capture reference
-  screens.
-- `profiles/` and `templates/` folders next to the exes — edit profiles and
-  capture templates here (the exe reads these from its own folder).
+This produces a **single self-contained `dist/IEVR.exe`** — nothing beside it:
+- The setup is built into the GUI (the **Templates** tab), so there is no
+  separate capture tool.
+- The default **profiles** and the **OCR models** are bundled *inside* the exe.
+- Captured **templates** and **logs** are written at runtime under
+  `%LOCALAPPDATA%\IEVR\` (e.g. `C:\Users\<you>\AppData\Local\IEVR`), so the exe
+  itself stays a single file you can copy anywhere.
 
-Distribute the whole `dist/` folder together. Still install the **ViGEmBus**
-driver on any machine that will send controller input.
+Just ship `IEVR.exe`. Still install the **ViGEmBus** driver on any machine that
+will send controller input.
+
+> Note: because profiles are bundled read-only, tuning `timings`/`keywords`
+> means editing `profiles/*.yaml` and rebuilding. Run from source (below) if you
+> want to tune profiles without rebuilding.
 
 ## Run (from source)
 
