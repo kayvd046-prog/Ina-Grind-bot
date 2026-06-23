@@ -31,5 +31,6 @@ ocr:
     FULLTIME:    ["full time"]
     REWARDS:     ["reward", "rewards"]
     POST_MATCH:  ["match result", "results", "next"]
+    REMATCH:     ["rematch"]
     LOADING:     ["loading", "now loading"]
     ERROR_DIALOG: ["error", "disconnected", "communication"]

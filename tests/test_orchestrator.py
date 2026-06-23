@@ -49,6 +49,38 @@ def test_dry_run_sends_no_input():
     assert c.presses == []
 
 
+class ScriptedDetector:
+    """Returns a fixed sequence of states, one per step."""
+    def __init__(self, states):
+        self.states = list(states)
+        self.i = 0
+
+    def best_score(self, frame):
+        s = self.states[min(self.i, len(self.states) - 1)]
+        self.i += 1
+        return (s, 0.99)
+
+
+def test_full_match_loop_including_rematch():
+    p = _profile()
+    c = NullController()
+    src = StaticFrameSource(np.zeros((20, 20, 3), np.uint8))
+    sm = StateMachine(p, c)
+    wd = Watchdog(stuck_seconds=10, now=lambda: 0.0)
+    seq = [GameState.MAIN_MENU, GameState.LOADING, GameState.KICKOFF,
+           GameState.IN_MATCH, GameState.GOAL, GameState.FULLTIME,
+           GameState.REWARDS, GameState.POST_MATCH, GameState.REMATCH]
+    o = Orchestrator(src, ScriptedDetector(seq), sm, wd, p)
+    for _ in seq:
+        o.step()
+    # The finished match is counted once (at POST_MATCH); REMATCH only starts
+    # the next one and must confirm without re-counting.
+    assert sm.matches_completed == 1
+    assert c.presses[-1] == "confirm"
+    # IN_MATCH / LOADING send no input; KICKOFF enables commander mode.
+    assert "commander_toggle" in c.presses
+
+
 def test_on_update_callback_called():
     p = _profile()
     src = StaticFrameSource(np.zeros((20, 20, 3), np.uint8))

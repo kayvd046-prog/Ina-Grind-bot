@@ -13,6 +13,7 @@ class GameState(Enum):
     FULLTIME = auto()
     REWARDS = auto()
     POST_MATCH = auto()
+    REMATCH = auto()
     ERROR_DIALOG = auto()
 
     def is_terminal_screen(self) -> bool:
@@ -22,4 +23,5 @@ class GameState(Enum):
             GameState.FULLTIME,
             GameState.REWARDS,
             GameState.POST_MATCH,
+            GameState.REMATCH,
         }

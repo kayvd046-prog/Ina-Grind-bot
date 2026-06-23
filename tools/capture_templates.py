@@ -14,7 +14,7 @@ CAPTURE_STATES = [
     GameState.MAIN_MENU, GameState.LOADING, GameState.KICKOFF,
     GameState.IN_MATCH, GameState.HALFTIME, GameState.GOAL,
     GameState.FULLTIME, GameState.REWARDS, GameState.POST_MATCH,
-    GameState.ERROR_DIALOG,
+    GameState.REMATCH, GameState.ERROR_DIALOG,
 ]
 
 

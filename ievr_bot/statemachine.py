@@ -18,6 +18,12 @@ class StateMachine:
             self.matches_completed += 1
             self.controller.press("confirm")
             return "post-match: advancing, starting next match"
+        if state == GameState.REMATCH:
+            # The match was already counted at POST_MATCH; the rematch prompt
+            # only kicks off the next one. "Rematch" is pre-selected, so a
+            # single confirm starts it.
+            self.controller.press("confirm")
+            return "rematch: confirming, starting next match"
         if state == GameState.MAIN_MENU:
             self.controller.press("confirm")
             return "main menu: starting match"
