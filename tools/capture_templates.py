@@ -5,6 +5,13 @@ For each state, position the game on that screen, then press ENTER to save.
 Press 's' then ENTER to skip a state, 'q' then ENTER to quit.
 """
 import argparse
+import sys
+from pathlib import Path
+
+# Running a script in tools/ puts tools/ on sys.path, not the project root, so
+# `import ievr_bot` fails. Put the project root first.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import cv2
 from ievr_bot.capture import ScreenCapture
 from ievr_bot.states import GameState

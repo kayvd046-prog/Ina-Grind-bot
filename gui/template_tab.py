@@ -65,6 +65,47 @@ class ExtractWorker(QThread):
             self.done.emit({})
 
 
+class DiagnoseWorker(QThread):
+    """Grabs ONE frame from the game window and reports what the bot sees:
+    every OCR text line and the detected state. Saves the frame as a PNG."""
+    done = Signal(str, str, object)   # report text, png path, frame
+    error = Signal(str)
+
+    def __init__(self, profile):
+        super().__init__()
+        self.profile = profile
+
+    def _grab(self, source, tries=6, delay=0.4):
+        import time
+        last = None
+        for _ in range(tries):
+            try:
+                return source.grab()
+            except Exception as exc:
+                last = exc
+                time.sleep(delay)
+        raise RuntimeError(str(last))
+
+    def run(self):
+        try:
+            from ievr_bot.capture import build_frame_source
+            from ievr_bot.composite_detector import build_detector
+            from ievr_bot.diagnostics import diagnose_frame, format_report, save_frame
+            from ievr_bot.paths import user_data_dir
+            frame = self._grab(build_frame_source(self.profile))
+            png = save_frame(frame, user_data_dir() / "diag")
+            detector = build_detector(self.profile)
+            try:
+                from ievr_bot.ocr import make_ocr_engine
+                ocr = make_ocr_engine((self.profile.ocr or {}).get("lang", "en"))
+            except Exception:
+                ocr = _NullOcr()
+            report = format_report(diagnose_frame(frame, ocr, detector))
+            self.done.emit(report, str(png), frame)
+        except Exception as exc:
+            self.error.emit(str(exc))
+
+
 class CropView(QWidget):
     """Shows a frame scaled to fit and a draggable/resizable crop rectangle.
     Drag inside the box to move it; drag the bottom-right handle to resize."""
@@ -224,11 +265,13 @@ class TemplateTab(QWidget):
         self.profile = None
         self.rec_worker: RecordWorker | None = None
         self.ext_worker: ExtractWorker | None = None
+        self.diag_worker: DiagnoseWorker | None = None
         self.rows: list[StateRow] = []
 
         self.profile_box = QComboBox(); self.profile_box.addItems(["pve", "ranked"])
         self.record_btn = QPushButton("Record")
         self.stop_btn = QPushButton("Stop"); self.stop_btn.setEnabled(False)
+        self.diagnose_btn = QPushButton("Diagnose current screen")
         self.save_btn = QPushButton("Save templates"); self.save_btn.setEnabled(False)
         self.status = QLabel("Idle. Pick a profile and press Record, then play "
                              "one full match in Commander Mode.")
@@ -239,6 +282,7 @@ class TemplateTab(QWidget):
         top = QHBoxLayout()
         top.addWidget(QLabel("Profile:")); top.addWidget(self.profile_box)
         top.addWidget(self.record_btn); top.addWidget(self.stop_btn)
+        top.addWidget(self.diagnose_btn)
         top.addStretch(); top.addWidget(self.save_btn)
 
         self.grid_host = QWidget()
@@ -254,7 +298,33 @@ class TemplateTab(QWidget):
 
         self.record_btn.clicked.connect(self.start_record)
         self.stop_btn.clicked.connect(self.stop_record)
+        self.diagnose_btn.clicked.connect(self.diagnose)
         self.save_btn.clicked.connect(self.save)
+
+    # --- diagnose a single screen ---
+    def diagnose(self):
+        self.profile = load_profile(self.profile_box.currentText(), profiles_dir())
+        self.diagnose_btn.setEnabled(False)
+        self.status.setText("Diagnosing current screen… (make sure the game is "
+                            "on the screen you want to inspect)")
+        self.diag_worker = DiagnoseWorker(self.profile)
+        self.diag_worker.error.connect(self._on_diag_error)
+        self.diag_worker.done.connect(self._on_diagnosed)
+        self.diag_worker.start()
+
+    def _on_diag_error(self, msg):
+        self.diagnose_btn.setEnabled(True)
+        self.status.setText(f"Diagnose failed: {msg}  (is the game window open "
+                            f"and not minimized?)")
+
+    def _on_diagnosed(self, report, png_path, frame):
+        self.diagnose_btn.setEnabled(True)
+        self._on_preview(frame)
+        for line in report.splitlines():
+            self.log_line.emit(line)
+        self.log_line.emit(f"saved diagnosis frame -> {png_path}")
+        self.status.setText(report + f"\n\nSaved screenshot: {png_path}\n"
+                            f"(full text also in the Run tab's Log)")
 
     # --- recording ---
     def start_record(self):

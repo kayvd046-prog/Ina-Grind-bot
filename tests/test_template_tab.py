@@ -21,6 +21,8 @@ def test_template_tab_constructs():
     tab = TemplateTab()
     assert hasattr(tab, "log_line")
     assert callable(tab.save)
+    assert callable(tab.diagnose)
+    assert tab.diagnose_btn.text() == "Diagnose current screen"
 
 
 def test_main_window_has_templates_tab():
