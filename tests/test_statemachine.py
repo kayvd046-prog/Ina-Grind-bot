@@ -42,25 +42,29 @@ def test_error_dialog_presses_cancel():
     assert c.presses == ["cancel"]
 
 
-def test_post_match_increments_counter():
+def test_post_match_advances_without_counting():
+    # POST_MATCH only advances; the match is counted when the rematch starts
+    # (the combined results/rematch screen is detected as REMATCH).
+    c = NullController()
+    sm = StateMachine(_profile(), c)
+    sm.handle(GameState.POST_MATCH)
+    assert c.presses == ["confirm"]
+    assert sm.matches_completed == 0
+
+
+def test_rematch_presses_confirm_and_counts():
     c = NullController()
     sm = StateMachine(_profile(), c)
     assert sm.matches_completed == 0
-    sm.handle(GameState.POST_MATCH)
-    assert sm.matches_completed == 1
-
-
-def test_rematch_presses_confirm():
-    c = NullController()
-    sm = StateMachine(_profile(), c)
     msg = sm.handle(GameState.REMATCH)
     assert c.presses == ["confirm"]
     assert "rematch" in msg.lower()
+    assert sm.matches_completed == 1
 
 
-def test_rematch_does_not_double_count_matches():
-    # POST_MATCH already counts the finished match; the rematch prompt only
-    # starts the next one, so it must not increment the counter again.
+def test_post_match_then_rematch_counts_once():
+    # If a separate results screen and the rematch screen both appear, the
+    # match is still counted exactly once (only REMATCH counts).
     c = NullController()
     sm = StateMachine(_profile(), c)
     sm.handle(GameState.POST_MATCH)

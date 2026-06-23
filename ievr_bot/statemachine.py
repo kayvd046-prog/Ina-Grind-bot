@@ -15,15 +15,18 @@ class StateMachine:
             self.controller.press("confirm")
             return "kickoff: enabled commander mode"
         if state == GameState.POST_MATCH:
+            # Only advance here; the match is counted at REMATCH so the count is
+            # exactly one per loop whether or not a separate results screen
+            # appears before the rematch prompt.
+            self.controller.press("confirm")
+            return "post-match: advancing"
+        if state == GameState.REMATCH:
+            # The end-of-match screen (RESULTS + a pre-selected "Rematch"
+            # button): one confirm starts the next match. Count the finished
+            # match here.
             self.matches_completed += 1
             self.controller.press("confirm")
-            return "post-match: advancing, starting next match"
-        if state == GameState.REMATCH:
-            # The match was already counted at POST_MATCH; the rematch prompt
-            # only kicks off the next one. "Rematch" is pre-selected, so a
-            # single confirm starts it.
-            self.controller.press("confirm")
-            return "rematch: confirming, starting next match"
+            return f"rematch: starting match #{self.matches_completed + 1}"
         if state == GameState.MAIN_MENU:
             self.controller.press("confirm")
             return "main menu: starting match"
