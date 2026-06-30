@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QImage, QPixmap, QPainter, QPen, QColor
 from PySide6.QtCore import Qt, QThread, Signal, QRect
 
-from ievr_bot.config import load_profile
+from ievr_bot.config import load_profile, available_profiles
 from ievr_bot.paths import profiles_dir
 from ievr_bot.states import GameState
 from ievr_bot.template_extractor import extract_candidates, save_template
@@ -268,7 +268,8 @@ class TemplateTab(QWidget):
         self.diag_worker: DiagnoseWorker | None = None
         self.rows: list[StateRow] = []
 
-        self.profile_box = QComboBox(); self.profile_box.addItems(["pve", "ranked"])
+        self.profile_box = QComboBox()
+        self.profile_box.addItems(available_profiles(profiles_dir()) or ["pve", "ranked"])
         self.record_btn = QPushButton("Record")
         self.stop_btn = QPushButton("Stop"); self.stop_btn.setEnabled(False)
         self.diagnose_btn = QPushButton("Diagnose current screen")

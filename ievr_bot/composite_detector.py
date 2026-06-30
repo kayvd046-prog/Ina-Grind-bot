@@ -26,8 +26,20 @@ def build_detector(profile):
     so the bot always runs.
     """
     from .logger import get_logger
+    log = get_logger()
     template = StateDetector(profile.templates_dir, profile.match_threshold)
+    n_templates = len(template.templates)
+
     if profile.detection == "template":
+        if n_templates == 0:
+            log.warning(
+                "Template detection has no template images in %s — "
+                "the bot will not recognize any screen. "
+                "Capture templates in the GUI Templates tab.",
+                profile.templates_dir,
+            )
+        else:
+            log.info("Template detection active with %d template(s) loaded.", n_templates)
         return template
 
     from .ocr import make_ocr_engine
@@ -36,7 +48,12 @@ def build_detector(profile):
     try:
         engine = make_ocr_engine(ocr_cfg.get("lang", "en"))
     except Exception:
-        get_logger().exception("OCR init failed; using template detection only")
+        log.exception(
+            "OCR init failed — falling back to TEMPLATE-ONLY detection "
+            "(%d template(s) loaded). Screens that OCR would read may go "
+            "undetected.",
+            n_templates,
+        )
         return template
     ocr_det = OcrStateDetector(
         engine,
@@ -45,5 +62,16 @@ def build_detector(profile):
         region=ocr_cfg.get("region"),
     )
     if profile.detection == "ocr":
+        log.info("OCR detection active.")
         return ocr_det
+    # composite (default)
+    if n_templates == 0:
+        log.info(
+            "Composite detection active — OCR only, no template fallback "
+            "(templates are optional; capture them in the Templates tab)."
+        )
+    else:
+        log.info(
+            "Composite detection active with %d fallback template(s).", n_templates
+        )
     return CompositeDetector(ocr_det, template)

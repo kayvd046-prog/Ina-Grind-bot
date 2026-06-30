@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QComboBox, QCheckBox, QLabel, QTabWidget,
 )
-from ievr_bot.config import load_profile
+from ievr_bot.config import load_profile, available_profiles
 from ievr_bot.paths import profiles_dir
 from gui.worker import BotWorker
 from gui.widgets import StatusPanel, LogPanel, PreviewPanel
@@ -24,7 +24,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("IEVR Commander Bot")
         self.worker: BotWorker | None = None
 
-        self.profile_box = QComboBox(); self.profile_box.addItems(["pve", "ranked"])
+        self.profile_box = QComboBox()
+        self.profile_box.addItems(available_profiles(profiles_dir()) or ["pve", "ranked"])
         self.controller_box = QComboBox()
         self.controller_box.addItems(["vgamepad", "keyboard", "null"])
         self.dry_run = QCheckBox("Dry-run (no input)")

@@ -1,4 +1,6 @@
+import logging
 import numpy as np
+from pathlib import Path
 from ievr_bot.composite_detector import CompositeDetector
 from ievr_bot.states import GameState
 
@@ -36,6 +38,26 @@ def test_both_unknown_is_unknown():
     comp = CompositeDetector(_Det(GameState.UNKNOWN, 0.0),
                              _Det(GameState.UNKNOWN, 0.0))
     assert comp.detect(_f()) == GameState.UNKNOWN
+
+
+def test_build_detector_template_mode_no_templates_logs_warning(tmp_path, caplog):
+    """build_detector with detection='template' and empty templates_dir logs a WARNING."""
+    from ievr_bot.composite_detector import build_detector
+    from ievr_bot.config import Profile
+    profile = Profile(
+        name="test",
+        mode="pve",
+        templates_dir=tmp_path,
+        button_map={"confirm": "A", "cancel": "B", "commander_toggle": "Y", "menu": "START"},
+        timings={},
+        detection="template",
+    )
+    with caplog.at_level(logging.WARNING, logger="ievr"):
+        build_detector(profile)
+    warning_texts = [r.message for r in caplog.records if r.levelno >= logging.WARNING]
+    assert any("template" in t.lower() for t in warning_texts), (
+        f"Expected a warning mentioning 'template', got: {warning_texts}"
+    )
 
 
 def test_build_detector_falls_back_when_ocr_init_fails(tmp_path, monkeypatch):

@@ -22,6 +22,14 @@ class Profile:
     ocr: dict = field(default_factory=dict)
 
 
+def available_profiles(profiles_dir: Path | None = None) -> list[str]:
+    """Return sorted list of profile stems found in profiles_dir."""
+    base = profiles_dir or _default_profiles_dir()
+    if not base.exists():
+        return []
+    return sorted(p.stem for p in base.glob("*.yaml"))
+
+
 def load_profile(name: str, profiles_dir: Path | None = None) -> Profile:
     base = profiles_dir or _default_profiles_dir()
     path = base / f"{name}.yaml"

@@ -17,9 +17,25 @@ class NullController:
 
 class VGamepadController:
     def __init__(self, button_map: dict) -> None:
-        import vgamepad as vg
+        try:
+            import vgamepad as vg
+        except ImportError as exc:
+            raise RuntimeError(
+                "The 'vgamepad' package is not installed. Install it with "
+                "'pip install vgamepad', or run with --controller keyboard."
+            ) from exc
+        try:
+            self.pad = vg.VX360Gamepad()
+        except Exception as exc:
+            # vgamepad needs the ViGEmBus kernel driver; without it VX360Gamepad
+            # raises an opaque ctypes/DLL error. Translate it into actionable advice.
+            raise RuntimeError(
+                "Could not create a virtual gamepad. The ViGEmBus driver is "
+                "required for controller input - install it from "
+                "https://github.com/ViGEm/ViGEmBus/releases (then reboot), or "
+                "run with --controller keyboard."
+            ) from exc
         self._vg = vg
-        self.pad = vg.VX360Gamepad()
         self.button_map = button_map
         self._lookup = {
             "A": vg.XUSB_BUTTON.XUSB_GAMEPAD_A,
