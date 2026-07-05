@@ -46,6 +46,10 @@ def profiles_dir() -> Path:
     return bundle_dir() / "profiles"
 
 
+def assets_dir() -> Path:
+    return bundle_dir() / "assets"
+
+
 def templates_root() -> Path:
     return user_data_dir() / "templates"
 

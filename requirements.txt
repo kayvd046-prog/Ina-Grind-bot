@@ -7,3 +7,4 @@ PyYAML>=6.0
 PySide6>=6.6
 pytest>=8.0
 rapidocr-onnxruntime>=1.2.3
+pillow  # build-time: tools/make_icon.py

@@ -25,12 +25,28 @@ def test_template_tab_constructs():
     assert tab.diagnose_btn.text() == "Diagnose current screen"
 
 
-def test_main_window_has_templates_tab():
+def test_main_window_has_run_and_templates_pages():
     from gui.app import MainWindow
     win = MainWindow()
-    tabs = win.centralWidget()
-    titles = [tabs.tabText(i) for i in range(tabs.count())]
-    assert "Run" in titles and "Templates" in titles
+    # Sidebar navigation switches a stacked widget between the two pages.
+    assert win.stack.count() == 2
+    assert win.stack.widget(0) is win.run_page
+    assert win.stack.widget(1) is win.template_tab
+    assert win.nav_run.isChecked()
+    win.nav_templates.click()
+    assert win.stack.currentWidget() is win.template_tab
+
+
+def test_status_update_colors_state_card():
+    from gui.app import RunPage
+    from ievr_bot.orchestrator import StatusUpdate
+    page = RunPage()
+    upd = StatusUpdate(state=GameState.IN_MATCH, score=0.9,
+                       action="waiting", matches=3, frame=None)
+    page.update_status(upd)
+    assert page.state_card.value.text() == "IN_MATCH"
+    assert page.matches_card.value.text() == "3"
+    assert "#34c759" in page.state_card.value.styleSheet()  # green while playing
 
 
 def test_state_row_with_candidates_selects_frame_and_crop():

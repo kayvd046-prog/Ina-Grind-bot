@@ -14,8 +14,8 @@ _rapidocr_datas = collect_data_files("rapidocr_onnxruntime")
 _rapidocr_hidden = collect_submodules("rapidocr_onnxruntime") + collect_submodules("onnxruntime")
 
 # Bundle the default profiles read-only inside the exe (paths.profiles_dir()
-# reads them from sys._MEIPASS when frozen).
-_profile_datas = [("profiles", "profiles")]
+# reads them from sys._MEIPASS when frozen). Assets carry the window icon/logo.
+_profile_datas = [("profiles", "profiles"), ("assets", "assets")]
 
 _EXCLUDES = ["pytest", "tkinter"]
 
@@ -44,6 +44,7 @@ gui_pyz = PYZ(gui_a.pure)
 gui_exe = EXE(
     gui_pyz, gui_a.scripts, gui_a.binaries, gui_a.datas, [],
     name="IEVR",
+    icon="assets/icon.ico",
     console=False,
     disable_windowed_traceback=False,
     upx=False,
