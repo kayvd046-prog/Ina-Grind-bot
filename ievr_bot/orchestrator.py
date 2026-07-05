@@ -28,6 +28,7 @@ class Orchestrator:
         self.dry_run = dry_run
         self.on_update = on_update
         self.log = get_logger()
+        self._last_logged_state: Optional[GameState] = None
 
     def step(self) -> StatusUpdate:
         frame = self.source.grab()
@@ -44,6 +45,13 @@ class Orchestrator:
             action = f"dry-run: would handle {state.name.lower()}"
         else:
             action = self.machine.handle(state)
+
+        # Log each state CHANGE (not every poll) so an unattended run leaves a
+        # readable timeline in ievr.log for remote diagnosis.
+        if state != self._last_logged_state:
+            self.log.info("state -> %s (score %.2f): %s",
+                          state.name, score, action)
+            self._last_logged_state = state
 
         upd = StatusUpdate(state=state, score=score, action=action,
                            matches=self.machine.matches_completed, frame=frame)

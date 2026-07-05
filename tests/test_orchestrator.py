@@ -81,6 +81,25 @@ def test_full_match_loop_including_rematch():
     assert "commander_toggle" in c.presses
 
 
+def test_step_logs_state_transitions_only(caplog):
+    import logging
+    p = _profile()
+    c = NullController()
+    src = StaticFrameSource(np.zeros((20, 20, 3), np.uint8))
+    sm = StateMachine(p, c)
+    wd = Watchdog(stuck_seconds=10, now=lambda: 0.0)
+    seq = [GameState.IN_MATCH, GameState.IN_MATCH, GameState.POST_MATCH,
+           GameState.POST_MATCH, GameState.REMATCH]
+    o = Orchestrator(src, ScriptedDetector(seq), sm, wd, p)
+    with caplog.at_level(logging.INFO, logger="ievr"):
+        for _ in seq:
+            o.step()
+    transitions = [r.message for r in caplog.records if "state ->" in r.message]
+    # One line per state CHANGE (3 changes), not one per poll (5 polls).
+    assert len(transitions) == 3
+    assert "POST_MATCH" in transitions[1] and "REMATCH" in transitions[2]
+
+
 def test_on_update_callback_called():
     p = _profile()
     src = StaticFrameSource(np.zeros((20, 20, 3), np.uint8))
