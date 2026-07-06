@@ -9,11 +9,14 @@ class BotWorker(QThread):
     log_line = Signal(str)
     stopped = Signal()
 
-    def __init__(self, profile, controller_kind="vgamepad", dry_run=False):
+    def __init__(self, profile, controller_kind="vgamepad", dry_run=False,
+                 stop_after_matches=None, stop_after_seconds=None):
         super().__init__()
         self.profile = profile
         self.controller_kind = controller_kind
         self.dry_run = dry_run
+        self.stop_after_matches = stop_after_matches
+        self.stop_after_seconds = stop_after_seconds
         self._stop = threading.Event()
 
     def run(self):
@@ -23,6 +26,8 @@ class BotWorker(QThread):
             orch = build_orchestrator(
                 self.profile, self.controller_kind, self.dry_run,
                 on_update=self.status.emit,
+                stop_after_matches=self.stop_after_matches,
+                stop_after_seconds=self.stop_after_seconds,
             )
             orch.run(self._stop)
         finally:

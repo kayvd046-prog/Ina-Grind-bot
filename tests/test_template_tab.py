@@ -66,6 +66,21 @@ def test_state_row_without_candidates_is_skipped():
     assert row.selected() is None
 
 
+def test_run_page_has_stop_condition_controls():
+    from gui.app import RunPage
+    page = RunPage()
+    # 0 means "no limit" for both controls.
+    assert page.stop_matches.value() == 0
+    assert page.stop_hours.value() == 0.0
+
+
+def test_bot_worker_accepts_stop_limits():
+    from gui.worker import BotWorker
+    w = BotWorker(None, stop_after_matches=5, stop_after_seconds=3600.0)
+    assert w.stop_after_matches == 5
+    assert w.stop_after_seconds == 3600.0
+
+
 def test_state_row_skip_toggle_returns_none():
     from gui.template_tab import StateRow
     row = StateRow(GameState.GOAL, [_cand(3, None)])

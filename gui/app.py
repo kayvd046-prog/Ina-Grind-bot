@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QComboBox, QCheckBox, QLabel, QFrame, QStackedWidget, QButtonGroup,
-    QSizePolicy,
+    QSizePolicy, QSpinBox, QDoubleSpinBox,
 )
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtCore import Qt
@@ -52,12 +52,28 @@ class RunPage(QWidget):
         self.stop_btn = QPushButton("■  Stop"); self.stop_btn.setObjectName("stop")
         self.stop_btn.setEnabled(False)
 
+        # Stop conditions: 0 = no limit for both.
+        self.stop_matches = QSpinBox()
+        self.stop_matches.setRange(0, 9999)
+        self.stop_matches.setSpecialValueText("no limit")
+        self.stop_matches.setSuffix(" matches")
+        self.stop_hours = QDoubleSpinBox()
+        self.stop_hours.setRange(0.0, 48.0)
+        self.stop_hours.setDecimals(1)
+        self.stop_hours.setSingleStep(0.5)
+        self.stop_hours.setSpecialValueText("no limit")
+        self.stop_hours.setSuffix(" h")
+
         controls = QHBoxLayout()
         controls.addWidget(QLabel("Profile:")); controls.addWidget(self.profile_box)
         controls.addSpacing(8)
         controls.addWidget(QLabel("Input:")); controls.addWidget(self.controller_box)
         controls.addSpacing(8)
         controls.addWidget(self.dry_run)
+        controls.addSpacing(8)
+        controls.addWidget(QLabel("Stop after:"))
+        controls.addWidget(self.stop_matches)
+        controls.addWidget(self.stop_hours)
         controls.addStretch()
         controls.addWidget(self.start_btn); controls.addWidget(self.stop_btn)
 
@@ -156,8 +172,12 @@ class MainWindow(QMainWindow):
     def start(self):
         rp = self.run_page
         profile = load_profile(rp.profile_box.currentText(), profiles_dir())
+        stop_matches = rp.stop_matches.value() or None
+        hours = rp.stop_hours.value()
+        stop_seconds = hours * 3600.0 if hours > 0 else None
         self.worker = BotWorker(
-            profile, rp.controller_box.currentText(), rp.dry_run.isChecked())
+            profile, rp.controller_box.currentText(), rp.dry_run.isChecked(),
+            stop_after_matches=stop_matches, stop_after_seconds=stop_seconds)
         self.worker.status.connect(self._on_status)
         self.worker.log_line.connect(rp.log_panel.append)
         self.worker.stopped.connect(self._on_stopped)

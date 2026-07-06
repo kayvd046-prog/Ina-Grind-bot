@@ -19,7 +19,10 @@ class StatusUpdate:
 class Orchestrator:
     def __init__(self, source, detector, machine, watchdog, profile: Profile,
                  dry_run: bool = False,
-                 on_update: Optional[Callable[[StatusUpdate], None]] = None) -> None:
+                 on_update: Optional[Callable[[StatusUpdate], None]] = None,
+                 stop_after_matches: Optional[int] = None,
+                 stop_after_seconds: Optional[float] = None,
+                 keep_awake=None, stuck_reporter=None) -> None:
         self.source = source
         self.detector = detector
         self.machine = machine
@@ -27,6 +30,10 @@ class Orchestrator:
         self.profile = profile
         self.dry_run = dry_run
         self.on_update = on_update
+        self.stop_after_matches = stop_after_matches
+        self.stop_after_seconds = stop_after_seconds
+        self.keep_awake = keep_awake
+        self.stuck_reporter = stuck_reporter
         self.log = get_logger()
         self._last_logged_state: Optional[GameState] = None
 
@@ -41,6 +48,14 @@ class Orchestrator:
             if not self.dry_run:
                 self.machine.controller.press("cancel")
             self.log.warning(action)
+            if self.stuck_reporter is not None:
+                try:
+                    saved = self.stuck_reporter.report(frame, state, score)
+                    if saved is not None:
+                        self.log.warning("saved stuck-screen diagnosis -> %s",
+                                         saved)
+                except Exception:
+                    self.log.exception("could not save stuck-screen diagnosis")
         elif self.dry_run:
             action = f"dry-run: would handle {state.name.lower()}"
         else:
@@ -63,35 +78,61 @@ class Orchestrator:
         interval = float(self.profile.timings.get("poll_interval", 0.4))
         self.log.info("Bot started (profile=%s, dry_run=%s)",
                       self.profile.name, self.dry_run)
+        start = time.monotonic()
         last_err = None  # signature of the previous step error
         err_streak = 0   # how many times it has repeated in a row
-        while not stop_event.is_set():
-            try:
-                self.step()
-                last_err, err_streak = None, 0
-            except Exception as exc:  # never let the unattended loop die
-                # Rate-limit identical repeated errors (e.g. window minimized for
-                # 30 min) so we don't write a stack trace every poll and fill disk.
-                sig = f"{type(exc).__name__}: {exc}"
-                if sig == last_err:
-                    err_streak += 1
-                    if err_streak % 50 == 0:
-                        self.log.warning("Still failing (x%d): %s", err_streak, sig)
-                else:
-                    self.log.exception("Error in step; backing off")
-                    last_err, err_streak = sig, 1
-                time.sleep(float(self.profile.timings.get("recovery_backoff", 2.0)))
-            time.sleep(interval)
-        self.log.info("Bot stopped")
+        if self.keep_awake is not None:
+            self.keep_awake.activate()
+        try:
+            while not stop_event.is_set():
+                if (self.stop_after_seconds is not None
+                        and time.monotonic() - start >= self.stop_after_seconds):
+                    self.log.info(
+                        "Time limit reached (%.1f h) — stopping after %d "
+                        "match(es).", self.stop_after_seconds / 3600.0,
+                        self.machine.matches_completed)
+                    break
+                try:
+                    self.step()
+                    last_err, err_streak = None, 0
+                except Exception as exc:  # never let the unattended loop die
+                    # Rate-limit identical repeated errors (e.g. window minimized
+                    # for 30 min) so we don't write a stack trace every poll and
+                    # fill disk.
+                    sig = f"{type(exc).__name__}: {exc}"
+                    if sig == last_err:
+                        err_streak += 1
+                        if err_streak % 50 == 0:
+                            self.log.warning("Still failing (x%d): %s",
+                                             err_streak, sig)
+                    else:
+                        self.log.exception("Error in step; backing off")
+                        last_err, err_streak = sig, 1
+                    time.sleep(float(
+                        self.profile.timings.get("recovery_backoff", 2.0)))
+                if (self.stop_after_matches
+                        and self.machine.matches_completed >= self.stop_after_matches):
+                    self.log.info("Match limit reached (%d) — stopping.",
+                                  self.stop_after_matches)
+                    break
+                time.sleep(interval)
+        finally:
+            if self.keep_awake is not None:
+                self.keep_awake.deactivate()
+            self.log.info("Bot stopped")
 
 
 def build_orchestrator(profile: Profile, controller_kind: str = "vgamepad",
                        dry_run: bool = False, source=None,
-                       on_update=None) -> "Orchestrator":
+                       on_update=None, stop_after_matches=None,
+                       stop_after_seconds=None) -> "Orchestrator":
     from .capture import build_frame_source
     from .composite_detector import build_detector
     from .controller import make_controller
+    from .keepawake import KeepAwake
+    from .paths import user_data_dir
     from .statemachine import StateMachine
+    from .stuck_reporter import StuckReporter, find_ocr_engine
     from .watchdog import Watchdog
 
     src = source if source is not None else build_frame_source(profile)
@@ -100,5 +141,10 @@ def build_orchestrator(profile: Profile, controller_kind: str = "vgamepad",
     controller = make_controller(kind, profile.button_map)
     machine = StateMachine(profile, controller)
     watchdog = Watchdog(float(profile.timings.get("stuck_seconds", 25)))
+    reporter = StuckReporter(user_data_dir() / "diag",
+                             ocr_engine=find_ocr_engine(detector))
     return Orchestrator(src, detector, machine, watchdog, profile,
-                        dry_run=dry_run, on_update=on_update)
+                        dry_run=dry_run, on_update=on_update,
+                        stop_after_matches=stop_after_matches,
+                        stop_after_seconds=stop_after_seconds,
+                        keep_awake=KeepAwake(), stuck_reporter=reporter)

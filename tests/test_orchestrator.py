@@ -110,3 +110,119 @@ def test_on_update_callback_called():
                      on_update=seen.append)
     o.step()
     assert len(seen) == 1 and seen[0].state == GameState.IN_MATCH
+
+
+# --- stop conditions -------------------------------------------------------
+
+def _never_set_event():
+    import threading
+    return threading.Event()
+
+
+def test_run_stops_after_n_matches():
+    p = _profile()
+    c = NullController()
+    src = StaticFrameSource(np.zeros((20, 20, 3), np.uint8))
+    sm = StateMachine(p, c)
+    wd = Watchdog(stuck_seconds=10, now=lambda: 0.0)
+    # Every REMATCH step counts one finished match, so 2 steps reach the limit.
+    o = Orchestrator(src, FakeDetector(GameState.REMATCH), sm, wd, p,
+                     stop_after_matches=2)
+    o.run(_never_set_event())  # must return on its own
+    assert sm.matches_completed == 2
+
+
+def test_run_stops_after_time_limit():
+    p = _profile()
+    src = StaticFrameSource(np.zeros((20, 20, 3), np.uint8))
+    sm = StateMachine(p, NullController())
+    wd = Watchdog(stuck_seconds=10, now=lambda: 0.0)
+    o = Orchestrator(src, FakeDetector(GameState.IN_MATCH), sm, wd, p,
+                     stop_after_seconds=0.0)
+    o.run(_never_set_event())  # limit already elapsed -> returns immediately
+    assert True
+
+
+def test_run_without_limits_still_honours_stop_event():
+    import threading
+    p = _profile()
+    src = StaticFrameSource(np.zeros((20, 20, 3), np.uint8))
+    sm = StateMachine(p, NullController())
+    wd = Watchdog(stuck_seconds=10, now=lambda: 0.0)
+    o = Orchestrator(src, FakeDetector(GameState.IN_MATCH), sm, wd, p)
+    ev = threading.Event()
+    ev.set()
+    o.run(ev)
+    assert True
+
+
+# --- keep-awake wiring -----------------------------------------------------
+
+class FakeKeepAwake:
+    def __init__(self):
+        self.active = None
+
+    def activate(self):
+        self.active = True
+
+    def deactivate(self):
+        self.active = False
+
+
+def test_run_activates_and_deactivates_keep_awake():
+    import threading
+    p = _profile()
+    src = StaticFrameSource(np.zeros((20, 20, 3), np.uint8))
+    sm = StateMachine(p, NullController())
+    wd = Watchdog(stuck_seconds=10, now=lambda: 0.0)
+    ka = FakeKeepAwake()
+    o = Orchestrator(src, FakeDetector(GameState.IN_MATCH), sm, wd, p,
+                     keep_awake=ka)
+    ev = threading.Event()
+    ev.set()
+    o.run(ev)
+    assert ka.active is False  # activated during run, released afterwards
+
+
+# --- stuck reporter wiring -------------------------------------------------
+
+class StuckNow:
+    """Watchdog clock that reports far beyond stuck_seconds."""
+
+    def __call__(self):
+        return 0.0
+
+
+class RecordingReporter:
+    def __init__(self, fail=False):
+        self.calls = []
+        self.fail = fail
+
+    def report(self, frame, state, score):
+        if self.fail:
+            raise OSError("disk full")
+        self.calls.append((state, score))
+        return None
+
+
+def _stuck_orch(reporter):
+    p = _profile()
+    src = StaticFrameSource(np.zeros((20, 20, 3), np.uint8))
+    sm = StateMachine(p, NullController())
+    t = iter([0.0, 100.0, 200.0, 300.0, 400.0, 500.0])
+    wd = Watchdog(stuck_seconds=10, now=lambda: next(t))
+    return Orchestrator(src, FakeDetector(GameState.UNKNOWN), sm, wd, p,
+                        stuck_reporter=reporter)
+
+
+def test_stuck_recovery_saves_a_diagnosis():
+    rep = RecordingReporter()
+    o = _stuck_orch(rep)
+    o.step()  # watchdog sees UNKNOWN for 100s -> stuck -> report
+    assert rep.calls == [(GameState.UNKNOWN, 0.99)]
+
+
+def test_stuck_reporter_failure_never_breaks_the_loop():
+    o = _stuck_orch(RecordingReporter(fail=True))
+    upd = o.step()  # must not raise even though the reporter does
+    assert "recovery" in upd.action
