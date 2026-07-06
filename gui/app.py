@@ -127,6 +127,10 @@ class MainWindow(QMainWindow):
         side.addSpacing(22)
         side.addWidget(self.nav_run); side.addWidget(self.nav_templates)
         side.addStretch()
+        credit = QLabel("made by KayVD1913")
+        credit.setObjectName("appSub")
+        credit.setAlignment(Qt.AlignCenter)
+        side.addWidget(credit)
         sidebar = QWidget(); sidebar.setObjectName("sidebar")
         sidebar.setLayout(side); sidebar.setFixedWidth(168)
 
