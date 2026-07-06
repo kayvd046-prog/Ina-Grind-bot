@@ -1,123 +1,118 @@
-# IEVR Commander-Mode Bot
+# IEVR Commander Bot
 
-Autonomous bot that grinds *Inazuma Eleven: Victory Road* matches using the
-game's built-in **Commander Mode**. The game's AI plays; the bot detects screens
-and presses buttons to loop matches forever. See the design spec in
-`docs/superpowers/specs/`.
+<p align="center">
+  <img src="assets/logo.png" width="120" alt="IEVR Commander Bot logo">
+</p>
 
-## One-time setup
+An autonomous bot that grinds **Inazuma Eleven: Victory Road** PvE matches on its
+own, using the game's built-in **Commander Mode**. The game's AI plays the match;
+the bot watches the screen, recognizes each menu, and presses the right buttons to
+loop matches forever — hands-free grinding.
 
-1. Install Python 3.11+ (this project was built/tested on 3.14).
-2. Create a venv and install deps:
-   ```
-   py -3.14 -m venv .venv
-   .venv\Scripts\python -m pip install -r requirements.txt
-   ```
-3. Install the **ViGEmBus** driver (required by `vgamepad`):
-   https://github.com/ViGEm/ViGEmBus/releases
-4. Launch the game, set a **fixed resolution / borderless window**.
-5. (Optional — templates are only an OCR fallback.) Capture reference
-   screenshots the easy way: open the GUI, go to the **Templates** tab, press
-   **Record**, play one full match in Commander Mode, then press **Stop**. The
-   bot records itself via the game window (no command prompt over the screen),
-   auto-labels the frames with its own detector, and shows a per-state review
-   grid with a suggested crop you can drag/resize before **Save**. See
-   "Recording templates" below.
-   The old interactive CLI still works as a fallback:
-   `.venv\Scripts\python tools\capture_templates.py --profile pve` (then crop
-   each saved PNG in `templates/pve/` down to the distinctive UI element).
+Everything ships as a **single `IEVR.exe`** — just double-click it. No Python, no
+setup files, no folders to manage.
 
-## Standalone exe (no Python needed)
+![Run screen](docs/screenshots/run.png)
 
-Build once, then just double-click:
+## Features
 
-```
-.venv\Scripts\python build_exe.py
-```
+- **Fully autonomous match loop** — starts a match, enables Commander Mode, waits
+  through kickoff / goals / half-time / full-time, then confirms the **Rematch**
+  screen and goes again.
+- **Screen recognition via OCR** — reads the on-screen text with RapidOCR (offline,
+  no internet) and matches it against per-state keywords. Resolution-independent.
+- **Optional image templates** as a fallback, captured from inside the app.
+- **Background / alt-tab friendly** — grabs the game window directly via the Win32
+  `PrintWindow` API, so it keeps seeing the game even behind other windows. Uses a
+  virtual Xbox controller (**vgamepad**), which many games keep reading while
+  unfocused.
+- **Live dashboard** — current state (color-coded), matches completed, last action,
+  a live preview of what the bot sees, and a running log.
+- **Built-in setup & diagnostics** — record templates and diagnose any screen from
+  the GUI; no command line needed.
 
-This produces a **single self-contained `dist/IEVR.exe`** — nothing beside it:
-- The setup is built into the GUI (the **Templates** tab), so there is no
-  separate capture tool.
-- The default **profiles** and the **OCR models** are bundled *inside* the exe.
-- Captured **templates** and **logs** are written at runtime under
-  `%LOCALAPPDATA%\IEVR\` (e.g. `C:\Users\<you>\AppData\Local\IEVR`), so the exe
-  itself stays a single file you can copy anywhere.
+## Quick start
 
-Just ship `IEVR.exe`. Still install the **ViGEmBus** driver on any machine that
-will send controller input.
+1. Download / build **`IEVR.exe`** (see below) and double-click it.
+2. Install the **ViGEmBus** driver once (needed for virtual controller input):
+   <https://github.com/ViGEm/ViGEmBus/releases> (then reboot).
+3. Launch the game in a **fixed-resolution / borderless window** and make sure it
+   **keeps running while unfocused** (disable "pause when unfocused" if present).
+4. In the bot: pick the **pve** profile, press **▶ Start**, and leave the game at
+   the main menu. It takes over from there.
 
-> Note: because profiles are bundled read-only, tuning `timings`/`keywords`
-> means editing `profiles/*.yaml` and rebuilding. Run from source (below) if you
-> want to tune profiles without rebuilding.
+> Captured templates and logs are written to `%LOCALAPPDATA%\IEVR\`. The exe itself
+> stays a single self-contained file you can copy anywhere.
 
-## Run (from source)
+## How it works
 
-GUI: `.venv\Scripts\python run_gui.py`
-Headless: `.venv\Scripts\python main.py --profile pve` (add `--dry-run` to
-observe without sending input, `--controller keyboard` for the keyboard
-fallback).
+Each poll (~2.5×/second) the bot:
 
-Start the game and leave it at the main menu, then press **Start** in the GUI.
+1. Grabs a frame from the game window.
+2. Runs the detector — OCR reads the visible text and picks the `GameState` whose
+   keywords match with the highest confidence (e.g. the results screen shows
+   `RESULTS` + a `Rematch` button → `REMATCH`).
+3. The state machine performs the matching action (press **A** to confirm, enable
+   Commander Mode at kickoff, dismiss error dialogs, etc.).
+4. A watchdog presses cancel if it ever gets stuck on an unknown screen.
 
-## Tests
-
-`.venv\Scripts\python -m pytest -v`
+Every state change is written to `ievr.log`, so an unattended run leaves a full,
+readable timeline.
 
 ## Recording templates (Templates tab)
 
-Instead of stopping at each screen and pressing ENTER in a prompt, let the bot
-record a whole match and produce the templates itself:
+Templates are an optional OCR fallback. Instead of the old prompt-driven capture,
+the bot records a whole match itself and produces the templates for you:
 
-1. GUI → **Templates** tab → pick the profile → **Record**.
-2. Play one full match in Commander Mode. The bot grabs frames from the game
-   **window** (same source it plays against), so nothing needs to overlap the
-   game and it keeps capturing even while alt-tabbed.
-3. **Stop**. The bot runs its own detector over the recording, groups frames by
-   game state, and keeps the highest-confidence ones.
-4. Review grid: per state you get the best frame with a **suggested crop**
-   (drawn around the text that identifies the state). Use *prev/next* to pick a
-   different frame, drag the box / its bottom-right handle to adjust the crop,
-   or tick **Skip**. States never seen during the match show "no candidate".
-5. **Save templates** writes the cropped PNGs to `templates/<profile>/`.
+![Templates screen](docs/screenshots/templates.png)
 
-Frames stay in memory; only the templates you keep are written. States OCR
-can't label won't get an auto-candidate — capture those with the CLI fallback
-if you need them.
+1. **Templates** tab → pick a profile → **Record**.
+2. Play one full match in Commander Mode, then **Stop**.
+3. The bot labels the frames with its own detector and shows a per-state review
+   grid with a suggested crop you can drag/resize.
+4. **Save templates** writes the cropped PNGs to `%LOCALAPPDATA%\IEVR\templates\`.
 
-## Background / alt-tab operation
+The **Diagnose current screen** button grabs one frame, saves it as a PNG, and
+reports exactly what OCR reads and which state is detected — handy when a screen
+isn't recognized.
 
-The profiles default to `capture_backend: window`, which grabs the game window
-directly via the Win32 `PrintWindow` API. This means the bot keeps **seeing** the
-game even when it is behind other windows or you have alt-tabbed away (the window
-must not be *minimized*). Set `window_title` in `profiles/*.yaml` to a substring
-of the game's window title (default: `INAZUMA ELEVEN`). Use
-`capture_backend: screen` to capture the visible foreground instead.
+## Build from source
 
-Two caveats for true background play:
-- **Input:** keyboard input only reaches the focused window, so use the
-  **vgamepad** controller (default) — XInput is not focus-bound and many games
-  keep reading it in the background.
-- **The game must keep running while unfocused.** Some games pause on focus
-  loss. Check the game's settings for a "pause when unfocused / run in
-  background" option and disable pausing. If the game still pauses, background
-  input cannot help — that is a game limitation, not a bot bug.
-- Some GPU-accelerated games return black frames with `PrintWindow`; if the
-  preview is black while the game is visible, switch to `capture_backend: screen`.
+Requires Python 3.11+ (developed on 3.14) on Windows.
 
-## Notes
+```powershell
+py -3.14 -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
 
-- Start with **PvE**. Automating online Ranked may violate the game's ToS.
-- The bot detects game screens via **OCR by default** (`detection: composite`
-  in each profile). On-screen text is read by RapidOCR and matched against the
-  keyword lists in `profiles/*.yaml` → `ocr.keywords`. If a state is missed or
-  misidentified, add or adjust keywords there. Note: single-word keywords (e.g.
-  "goal") are high-recall but low-precision; matching is whole-word, and
-  narrowing `ocr.region` to the banner area improves reliability.
-- Reference image templates are an **optional fallback**: the composite
-  detector only consults them when OCR confidence is below the threshold. You
-  can still capture templates with `capture_templates.exe` for extra robustness,
-  but they are not required for basic operation.
-- Tune `timings` in `profiles/*.yaml` if button presses arrive too early or
-  too late.
-- If you switch the game resolution or window size, recapture any template
-  images you rely on (OCR is resolution-independent).
+# Run from source:
+.venv\Scripts\python run_gui.py
+
+# Or build the single-file exe (regenerates the icon first if needed):
+.venv\Scripts\python tools\make_icon.py
+.venv\Scripts\python build_exe.py     # -> dist\IEVR.exe
+```
+
+Headless / CLI: `.venv\Scripts\python main.py --profile pve` (add `--dry-run` to
+observe without sending input, `--controller keyboard` for the keyboard fallback).
+
+## Tests
+
+```
+.venv\Scripts\python -m pytest -q
+```
+
+## Tuning
+
+Profiles live in `profiles/*.yaml` (bundled read-only into the exe — edit and
+rebuild to change them):
+
+- `ocr.keywords` — the words that identify each screen. Prefer distinctive phrases.
+- `timings` — poll interval, tap cooldown, and how long before the watchdog steps in.
+- `capture_backend` — `window` (default, works in background) or `screen`.
+- `window_title` — a substring of the game window title (default `INAZUMA ELEVEN`).
+
+## Disclaimer
+
+For **personal, offline PvE grinding** only. Automating online / Ranked play may
+violate the game's Terms of Service — don't. This project is not affiliated with
+Level-5 or the Inazuma Eleven franchise.
