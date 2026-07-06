@@ -7,6 +7,7 @@ from ievr_bot.logger import get_logger
 class BotWorker(QThread):
     status = Signal(object)
     log_line = Signal(str)
+    rewards = Signal(object, int)
     stopped = Signal()
 
     def __init__(self, profile, controller_kind="vgamepad", dry_run=False,
@@ -28,6 +29,7 @@ class BotWorker(QThread):
                 on_update=self.status.emit,
                 stop_after_matches=self.stop_after_matches,
                 stop_after_seconds=self.stop_after_seconds,
+                on_rewards=lambda totals, n: self.rewards.emit(totals, n),
             )
             orch.run(self._stop)
         finally:

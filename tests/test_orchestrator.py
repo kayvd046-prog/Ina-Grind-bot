@@ -222,6 +222,57 @@ def test_stuck_recovery_saves_a_diagnosis():
     assert rep.calls == [(GameState.UNKNOWN, 0.99)]
 
 
+class RecordingTracker:
+    def __init__(self):
+        self.observed = 0
+        self.flushes = 0
+        self.totals = {"Fire Pinwheel": 2}
+        self.matches = 0
+
+    def observe_frame(self, frame):
+        self.observed += 1
+
+    def flush_match(self):
+        self.flushes += 1
+        self.matches += 1
+
+
+def test_rewards_observed_on_end_screen_transitions_and_flushed_on_rematch():
+    p = _profile()
+    src = StaticFrameSource(np.zeros((20, 20, 3), np.uint8))
+    sm = StateMachine(p, NullController())
+    wd = Watchdog(stuck_seconds=1000, now=lambda: 0.0)
+    tracker = RecordingTracker()
+    seen = []
+    seq = [GameState.IN_MATCH, GameState.REWARDS, GameState.REWARDS,
+           GameState.POST_MATCH, GameState.REMATCH]
+    o = Orchestrator(src, ScriptedDetector(seq), sm, wd, p,
+                     rewards_tracker=tracker,
+                     on_rewards=lambda totals, n: seen.append((totals, n)))
+    for _ in seq:
+        o.step()
+    # One observation per transition into an end screen (REWARDS, POST_MATCH,
+    # REMATCH) — not one per poll (REWARDS is polled twice).
+    assert tracker.observed == 3
+    assert tracker.flushes == 1
+    assert seen == [({"Fire Pinwheel": 2}, 1)]
+
+
+def test_rewards_tracker_failure_never_breaks_the_loop():
+    class BrokenTracker(RecordingTracker):
+        def observe_frame(self, frame):
+            raise OSError("ocr exploded")
+
+    p = _profile()
+    src = StaticFrameSource(np.zeros((20, 20, 3), np.uint8))
+    sm = StateMachine(p, NullController())
+    wd = Watchdog(stuck_seconds=1000, now=lambda: 0.0)
+    o = Orchestrator(src, FakeDetector(GameState.REWARDS), sm, wd, p,
+                     rewards_tracker=BrokenTracker())
+    upd = o.step()  # must not raise
+    assert upd.state == GameState.REWARDS
+
+
 def test_stuck_reporter_failure_never_breaks_the_loop():
     o = _stuck_orch(RecordingReporter(fail=True))
     upd = o.step()  # must not raise even though the reporter does

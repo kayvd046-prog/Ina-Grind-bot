@@ -1,7 +1,8 @@
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QComboBox, QCheckBox, QLabel, QFrame, QStackedWidget, QButtonGroup,
-    QSizePolicy, QSpinBox, QDoubleSpinBox,
+    QSizePolicy, QSpinBox, QDoubleSpinBox, QTableWidget, QTableWidgetItem,
+    QAbstractItemView, QHeaderView,
 )
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtCore import Qt
@@ -107,6 +108,41 @@ class RunPage(QWidget):
         self.preview_panel.update_frame(upd.frame)
 
 
+class RewardsPage(QWidget):
+    """Per-session overview of items earned, aggregated by the bot."""
+
+    def __init__(self):
+        super().__init__()
+        self.header = QLabel()
+        self.header.setObjectName("appTitle")
+        self.table = QTableWidget(0, 2)
+        self.table.setHorizontalHeaderLabels(["Item", "Count"])
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.verticalHeader().setVisible(False)
+        hint = QLabel("Counted from the end-of-match screens via OCR. "
+                      "Resets when you press Start.")
+        hint.setObjectName("appSub")
+        root = QVBoxLayout(self)
+        root.setContentsMargins(18, 18, 18, 18)
+        root.setSpacing(10)
+        root.addWidget(self.header)
+        root.addWidget(hint)
+        root.addWidget(self.table, 1)
+        self.reset()
+
+    def update_rewards(self, totals: dict, matches: int):
+        self.header.setText(f"{matches} matches counted this session")
+        rows = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+        self.table.setRowCount(len(rows))
+        for r, (name, qty) in enumerate(rows):
+            self.table.setItem(r, 0, QTableWidgetItem(name))
+            self.table.setItem(r, 1, QTableWidgetItem(str(qty)))
+
+    def reset(self):
+        self.update_rewards({}, 0)
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -129,9 +165,12 @@ class MainWindow(QMainWindow):
         subtitle = QLabel("Commander Bot"); subtitle.setObjectName("appSub")
         subtitle.setAlignment(Qt.AlignCenter)
 
-        self.nav_run = QPushButton("  Run"); self.nav_templates = QPushButton("  Templates")
+        self.nav_run = QPushButton("  Run")
+        self.nav_rewards = QPushButton("  Rewards")
+        self.nav_templates = QPushButton("  Templates")
         nav_group = QButtonGroup(self)
-        for i, b in enumerate((self.nav_run, self.nav_templates)):
+        for i, b in enumerate((self.nav_run, self.nav_rewards,
+                               self.nav_templates)):
             b.setObjectName("nav"); b.setCheckable(True)
             nav_group.addButton(b, i)
         self.nav_run.setChecked(True)
@@ -141,7 +180,8 @@ class MainWindow(QMainWindow):
         side.setSpacing(6)
         side.addWidget(logo); side.addWidget(title); side.addWidget(subtitle)
         side.addSpacing(22)
-        side.addWidget(self.nav_run); side.addWidget(self.nav_templates)
+        side.addWidget(self.nav_run); side.addWidget(self.nav_rewards)
+        side.addWidget(self.nav_templates)
         side.addStretch()
         credit = QLabel("made by KayVD1913")
         credit.setObjectName("appSub")
@@ -152,10 +192,12 @@ class MainWindow(QMainWindow):
 
         # --- pages ---
         self.run_page = RunPage()
+        self.rewards_page = RewardsPage()
         self.template_tab = TemplateTab()
         self.template_tab.log_line.connect(self.run_page.log_panel.append)
         self.stack = QStackedWidget()
         self.stack.addWidget(self.run_page)
+        self.stack.addWidget(self.rewards_page)
         self.stack.addWidget(self.template_tab)
         nav_group.idClicked.connect(self.stack.setCurrentIndex)
 
@@ -178,6 +220,8 @@ class MainWindow(QMainWindow):
         self.worker = BotWorker(
             profile, rp.controller_box.currentText(), rp.dry_run.isChecked(),
             stop_after_matches=stop_matches, stop_after_seconds=stop_seconds)
+        self.rewards_page.reset()  # session-only overview
+        self.worker.rewards.connect(self.rewards_page.update_rewards)
         self.worker.status.connect(self._on_status)
         self.worker.log_line.connect(rp.log_panel.append)
         self.worker.stopped.connect(self._on_stopped)
