@@ -12,6 +12,19 @@ loop matches forever — hands-free grinding.
 Everything ships as a **single `IEVR.exe`** — just double-click it. No Python, no
 setup files, no folders to manage.
 
+<p align="center">
+  <a href="https://github.com/kayvd046-prog/Ina-Grind-bot/releases/latest/download/IEVR.exe">
+    <img src="https://img.shields.io/badge/Download-IEVR.exe-3a6df0?style=for-the-badge&logo=windows&logoColor=white" alt="Download IEVR.exe">
+  </a>
+  &nbsp;
+  <a href="https://github.com/kayvd046-prog/Ina-Grind-bot/releases/latest">
+    <img src="https://img.shields.io/github/v/release/kayvd046-prog/Ina-Grind-bot?style=for-the-badge&color=34c759" alt="Latest release">
+  </a>
+</p>
+
+> **[⬇ Download the latest `IEVR.exe`](https://github.com/kayvd046-prog/Ina-Grind-bot/releases/latest)** — no build needed. Then install the
+> [ViGEmBus driver](https://github.com/ViGEm/ViGEmBus/releases) once and run it.
+
 ![Run screen](docs/screenshots/run.png)
 
 ## Features
