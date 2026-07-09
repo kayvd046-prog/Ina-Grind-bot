@@ -66,6 +66,40 @@ def test_state_row_without_candidates_is_skipped():
     assert row.selected() is None
 
 
+def test_run_page_shows_session_rate_card():
+    from gui.app import RunPage
+    from ievr_bot.orchestrator import StatusUpdate
+    page = RunPage()
+    assert page.rate_card.value.text() == "—"
+    upd = StatusUpdate(state=GameState.IN_MATCH, score=0.9,
+                       action="waiting", matches=1, frame=None)
+    page.update_status(upd)
+    # One match noted; exact rate depends on the wall clock, but the card
+    # must now show a rate instead of the placeholder.
+    assert "/h" in page.rate_card.value.text()
+
+
+def test_main_window_has_tray_icon_with_status_tooltip():
+    from gui.app import MainWindow
+    from ievr_bot.orchestrator import StatusUpdate
+    win = MainWindow()
+    assert win.tray is not None
+    upd = StatusUpdate(state=GameState.IN_MATCH, score=0.9,
+                       action="waiting", matches=3, frame=None)
+    win._on_status(upd)
+    tip = win.tray.toolTip()
+    assert "IN_MATCH" in tip and "3" in tip
+
+
+def test_update_banner_hidden_until_update_found():
+    from gui.app import MainWindow
+    win = MainWindow()
+    assert win.update_banner.isHidden()
+    win.show_update("v9.9.9", "https://example.test/rel")
+    assert not win.update_banner.isHidden()
+    assert "v9.9.9" in win.update_banner.text()
+
+
 def test_run_page_has_stop_condition_controls():
     from gui.app import RunPage
     page = RunPage()

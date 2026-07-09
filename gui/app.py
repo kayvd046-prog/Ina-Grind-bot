@@ -1,13 +1,19 @@
+import sys
+
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QComboBox, QCheckBox, QLabel, QFrame, QStackedWidget, QButtonGroup,
-    QSizePolicy, QSpinBox, QDoubleSpinBox,
+    QSizePolicy, QSpinBox, QDoubleSpinBox, QSystemTrayIcon, QMenu,
+    QApplication,
 )
 from PySide6.QtGui import QIcon, QPixmap
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QEvent, QTimer, QThread, Signal
 
 from ievr_bot.config import load_profile, available_profiles
 from ievr_bot.paths import profiles_dir, assets_dir
+from ievr_bot.stats import SessionStats
+from ievr_bot.update_check import fetch_latest, is_newer
+from ievr_bot.version import __version__
 from gui.worker import BotWorker
 from gui.widgets import LogPanel, PreviewPanel
 from gui.theme import QSS, state_color
@@ -77,12 +83,15 @@ class RunPage(QWidget):
         controls.addStretch()
         controls.addWidget(self.start_btn); controls.addWidget(self.stop_btn)
 
+        self.stats = SessionStats()
         self.state_card = StatCard("State")
         self.matches_card = StatCard("Matches")
         self.matches_card.set_value("0")
+        self.rate_card = StatCard("Rate", small=True)
         self.action_card = StatCard("Action", small=True)
         cards = QHBoxLayout()
-        for c in (self.state_card, self.matches_card, self.action_card):
+        for c in (self.state_card, self.matches_card, self.rate_card,
+                  self.action_card):
             c.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             c.setMinimumHeight(92)
             cards.addWidget(c, 1)
@@ -103,6 +112,8 @@ class RunPage(QWidget):
     def update_status(self, upd):
         self.state_card.set_value(upd.state.name, state_color(upd.state))
         self.matches_card.set_value(str(upd.matches))
+        self.stats.note_matches(upd.matches)
+        self.rate_card.set_value(self.stats.format_summary())
         self.action_card.set_value(f"{upd.action}\nscore {upd.score:.2f}")
         self.preview_panel.update_frame(upd.frame)
 
@@ -143,6 +154,13 @@ class MainWindow(QMainWindow):
         side.addSpacing(22)
         side.addWidget(self.nav_run); side.addWidget(self.nav_templates)
         side.addStretch()
+        self.update_banner = QLabel()
+        self.update_banner.setObjectName("appSub")
+        self.update_banner.setAlignment(Qt.AlignCenter)
+        self.update_banner.setWordWrap(True)
+        self.update_banner.setOpenExternalLinks(True)
+        self.update_banner.hide()
+        side.addWidget(self.update_banner)
         credit = QLabel("made by KayVD1913")
         credit.setObjectName("appSub")
         credit.setAlignment(Qt.AlignCenter)
@@ -169,6 +187,60 @@ class MainWindow(QMainWindow):
         self.run_page.start_btn.clicked.connect(self.start)
         self.run_page.stop_btn.clicked.connect(self.stop)
 
+        # --- system tray ---
+        self._tray_msg_shown = False
+        self.tray = QSystemTrayIcon(self.windowIcon(), self)
+        tray_menu = QMenu()
+        tray_menu.addAction("Show").triggered.connect(self._restore_from_tray)
+        tray_menu.addAction("Quit").triggered.connect(self._quit)
+        self.tray.setContextMenu(tray_menu)
+        self.tray.setToolTip("IEVR Commander Bot — idle")
+        self.tray.activated.connect(self._on_tray_activated)
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray.show()
+
+        # --- update check (only meaningful for the packaged exe) ---
+        self._update_thread = None
+        if getattr(sys, "frozen", False):
+            self._update_thread = _UpdateCheck(self)
+            self._update_thread.found.connect(self.show_update)
+            self._update_thread.start()
+
+    # --- tray behaviour ---
+    def changeEvent(self, event):
+        # Minimize -> hide to tray, so an hours-long grind doesn't hold a
+        # taskbar slot. Restore via the tray icon.
+        if (event.type() == QEvent.WindowStateChange and self.isMinimized()
+                and self.tray.isVisible()):
+            QTimer.singleShot(0, self.hide)
+            if not self._tray_msg_shown:
+                self.tray.showMessage(
+                    "IEVR Commander Bot",
+                    "Still running here in the system tray.")
+                self._tray_msg_shown = True
+        super().changeEvent(event)
+
+    def _on_tray_activated(self, reason):
+        if reason in (QSystemTrayIcon.Trigger, QSystemTrayIcon.DoubleClick):
+            self._restore_from_tray()
+
+    def _restore_from_tray(self):
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    def _quit(self):
+        if self.worker:
+            self.worker.stop()
+        self.tray.hide()
+        QApplication.instance().quit()
+
+    # --- update banner ---
+    def show_update(self, tag: str, url: str):
+        self.update_banner.setText(
+            f'<a href="{url}" style="color:#3a6df0;">Update available: {tag}</a>')
+        self.update_banner.show()
+
     def start(self):
         rp = self.run_page
         profile = load_profile(rp.profile_box.currentText(), profiles_dir())
@@ -178,6 +250,7 @@ class MainWindow(QMainWindow):
         self.worker = BotWorker(
             profile, rp.controller_box.currentText(), rp.dry_run.isChecked(),
             stop_after_matches=stop_matches, stop_after_seconds=stop_seconds)
+        rp.stats.reset()  # rate/average restart with each run
         self.worker.status.connect(self._on_status)
         self.worker.log_line.connect(rp.log_panel.append)
         self.worker.stopped.connect(self._on_stopped)
@@ -190,7 +263,19 @@ class MainWindow(QMainWindow):
 
     def _on_status(self, upd):
         self.run_page.update_status(upd)
+        self.tray.setToolTip(
+            f"IEVR — {upd.state.name} · {upd.matches} matches")
 
     def _on_stopped(self):
         self.run_page.start_btn.setEnabled(True)
         self.run_page.stop_btn.setEnabled(False)
+
+
+class _UpdateCheck(QThread):
+    """Background check against GitHub; emits only when a newer tag exists."""
+    found = Signal(str, str)
+
+    def run(self):
+        got = fetch_latest()
+        if got is not None and is_newer(got[0], __version__):
+            self.found.emit(got[0], got[1])
