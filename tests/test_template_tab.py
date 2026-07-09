@@ -25,40 +25,16 @@ def test_template_tab_constructs():
     assert tab.diagnose_btn.text() == "Diagnose current screen"
 
 
-def test_main_window_has_run_rewards_and_templates_pages():
+def test_main_window_has_run_and_templates_pages():
     from gui.app import MainWindow
     win = MainWindow()
-    # Sidebar navigation switches a stacked widget between the three pages.
-    assert win.stack.count() == 3
+    # Sidebar navigation switches a stacked widget between the two pages.
+    assert win.stack.count() == 2
     assert win.stack.widget(0) is win.run_page
-    assert win.stack.widget(1) is win.rewards_page
-    assert win.stack.widget(2) is win.template_tab
+    assert win.stack.widget(1) is win.template_tab
     assert win.nav_run.isChecked()
     win.nav_templates.click()
     assert win.stack.currentWidget() is win.template_tab
-    win.nav_rewards.click()
-    assert win.stack.currentWidget() is win.rewards_page
-
-
-def test_rewards_page_shows_sorted_totals_and_match_count():
-    from gui.app import RewardsPage
-    page = RewardsPage()
-    page.update_rewards({"Training Bib": 1, "Fire Pinwheel": 3}, 2)
-    assert "2" in page.header.text()
-    assert page.table.rowCount() == 2
-    # Sorted by count, highest first.
-    assert page.table.item(0, 0).text() == "Fire Pinwheel"
-    assert page.table.item(0, 1).text() == "3"
-    assert page.table.item(1, 0).text() == "Training Bib"
-
-
-def test_rewards_page_reset_clears_table():
-    from gui.app import RewardsPage
-    page = RewardsPage()
-    page.update_rewards({"Aura Ball": 2}, 1)
-    page.reset()
-    assert page.table.rowCount() == 0
-    assert "0" in page.header.text()
 
 
 def test_status_update_colors_state_card():

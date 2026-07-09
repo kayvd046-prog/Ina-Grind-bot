@@ -41,8 +41,6 @@ setup files, no folders to manage.
   unfocused.
 - **Live dashboard** — current state (color-coded), matches completed, last action,
   a live preview of what the bot sees, and a running log.
-- **Rewards overview** — the bot OCRs the end-of-match screens and keeps a
-  per-session table of every item earned and how many, on its own Rewards page.
 - **Stop conditions & keep-awake** — stop after N matches and/or X hours
   (0 = no limit), and Windows is kept from sleeping while a run is active.
 - **Automatic stuck-screen diagnosis** — if the watchdog has to recover, the

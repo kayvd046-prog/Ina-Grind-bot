@@ -22,8 +22,7 @@ class Orchestrator:
                  on_update: Optional[Callable[[StatusUpdate], None]] = None,
                  stop_after_matches: Optional[int] = None,
                  stop_after_seconds: Optional[float] = None,
-                 keep_awake=None, stuck_reporter=None,
-                 rewards_tracker=None, on_rewards=None) -> None:
+                 keep_awake=None, stuck_reporter=None) -> None:
         self.source = source
         self.detector = detector
         self.machine = machine
@@ -35,16 +34,12 @@ class Orchestrator:
         self.stop_after_seconds = stop_after_seconds
         self.keep_awake = keep_awake
         self.stuck_reporter = stuck_reporter
-        self.rewards_tracker = rewards_tracker
-        self.on_rewards = on_rewards
         self.log = get_logger()
         self._last_logged_state: Optional[GameState] = None
 
     def step(self) -> StatusUpdate:
         frame = self.source.grab()
         state, score = self.detector.best_score(frame)
-        transition = state != self._last_logged_state
-        prev_matches = self.machine.matches_completed
         self.watchdog.update(state)
 
         if self.watchdog.is_stuck():
@@ -65,20 +60,6 @@ class Orchestrator:
             action = f"dry-run: would handle {state.name.lower()}"
         else:
             action = self.machine.handle(state)
-
-        if self.rewards_tracker is not None:
-            try:
-                from .rewards import REWARD_SCREENS
-                # OCR only on the transition onto an end screen, not every poll.
-                if transition and state in REWARD_SCREENS:
-                    self.rewards_tracker.observe_frame(frame)
-                if self.machine.matches_completed > prev_matches:
-                    self.rewards_tracker.flush_match()
-                    if self.on_rewards is not None:
-                        self.on_rewards(dict(self.rewards_tracker.totals),
-                                        self.rewards_tracker.matches)
-            except Exception:
-                self.log.exception("rewards tracking failed")
 
         # Log each state CHANGE (not every poll) so an unattended run leaves a
         # readable timeline in ievr.log for remote diagnosis.
@@ -144,7 +125,7 @@ class Orchestrator:
 def build_orchestrator(profile: Profile, controller_kind: str = "vgamepad",
                        dry_run: bool = False, source=None,
                        on_update=None, stop_after_matches=None,
-                       stop_after_seconds=None, on_rewards=None) -> "Orchestrator":
+                       stop_after_seconds=None) -> "Orchestrator":
     from .capture import build_frame_source
     from .composite_detector import build_detector
     from .controller import make_controller
@@ -160,13 +141,10 @@ def build_orchestrator(profile: Profile, controller_kind: str = "vgamepad",
     controller = make_controller(kind, profile.button_map)
     machine = StateMachine(profile, controller)
     watchdog = Watchdog(float(profile.timings.get("stuck_seconds", 25)))
-    from .rewards import RewardsTracker
-    engine = find_ocr_engine(detector)
-    reporter = StuckReporter(user_data_dir() / "diag", ocr_engine=engine)
-    tracker = RewardsTracker(ocr_engine=engine)
+    reporter = StuckReporter(user_data_dir() / "diag",
+                             ocr_engine=find_ocr_engine(detector))
     return Orchestrator(src, detector, machine, watchdog, profile,
                         dry_run=dry_run, on_update=on_update,
                         stop_after_matches=stop_after_matches,
                         stop_after_seconds=stop_after_seconds,
-                        keep_awake=KeepAwake(), stuck_reporter=reporter,
-                        rewards_tracker=tracker, on_rewards=on_rewards)
+                        keep_awake=KeepAwake(), stuck_reporter=reporter)
